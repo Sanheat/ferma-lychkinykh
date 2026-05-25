@@ -236,10 +236,9 @@ export function CpSidebar({ active, onNav, counterparty, onLogout, ordersCount, 
         })}
       </nav>
       <div style={{ flex: 1 }} />
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
         <CpStamp size={170} />
       </div>
-      <div style={{ flex: 1 }} />
       <button onClick={() => alert('Поддержка: +7 (000) 000-00-00 · ferma@lichkiny.ru')}
         style={{
           display: 'flex', alignItems: 'center', gap: 12,
