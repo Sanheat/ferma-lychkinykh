@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-page); }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .shadow-card { background: white; border-radius: var(--radius-lg); padding: 16px 20px; min-width: 120px; }
+  .label { font-family: var(--font-label); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-tertiary); margin-bottom: 4px; }
+  .desc  { font-family: var(--font-body); font-size: 10px; color: var(--fg-secondary); }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="shadow-card" style="box-shadow: 0 1px 3px rgba(61,43,31,0.08)">
+    <div class="label">--shadow-xs</div><div class="desc">Очень лёгкий · hover</div>
+  </div>
+  <div class="shadow-card" style="box-shadow: 0 2px 8px rgba(61,43,31,0.10)">
+    <div class="label">--shadow-sm</div><div class="desc">Карточка по умолчанию</div>
+  </div>
+  <div class="shadow-card" style="box-shadow: 0 4px 16px rgba(61,43,31,0.12)">
+    <div class="label">--shadow-md</div><div class="desc">Поднятая карточка</div>
+  </div>
+  <div class="shadow-card" style="box-shadow: 0 8px 32px rgba(61,43,31,0.14)">
+    <div class="label">--shadow-lg</div><div class="desc">Дропдаун · Модал</div>
+  </div>
+  <div class="shadow-card" style="box-shadow: 0 16px 48px rgba(61,43,31,0.18)">
+    <div class="label">--shadow-xl</div><div class="desc">Полноэкранный оверлей</div>
+  </div>
+</div>
+<div class="row">
+  <div class="shadow-card" style="box-shadow: inset 0 1px 3px rgba(61,43,31,0.10); background: var(--bg-section-alt)">
+    <div class="label">Inner shadow</div><div class="desc">Поля ввода · вдавленность</div>
+  </div>
+  <div class="shadow-card" style="border: 1px solid var(--border-light); box-shadow: none">
+    <div class="label">Border только</div><div class="desc">Вторичные карточки</div>
+  </div>
+</div>
+</body>
+</html>

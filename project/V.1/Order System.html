@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ферма Лычкиных — Система заявок</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400&family=PT+Sans:ital,wght@0,400;0,700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'PT Sans',Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  button{cursor:pointer;}
+  select,input,textarea{font-family:inherit;}
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-track{background:#f5edd6;}
+  ::-webkit-scrollbar-thumb{background:#c9b299;border-radius:3px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+/* ── TOKENS ── */
+const BR='#c94030',BRH='#a8331f',ACC='#e8a838',NAT='#7a9e7e';
+const DRK='#3d2b1f',FG2='#6b5245',FG3='#9a8070';
+const BG='#fdfaf4',ALT='#f5edd6',CRD='#fff',BRD='#e8d9c4';
+const FD="'PT Serif',Georgia,serif";
+const FB="'PT Sans',Arial,sans-serif";
+const FL="'Nunito',sans-serif";
+
+/* ── PACKAGING ── */
+const PKG = {
+  yasik: { id:'yasik', label:'Ящик монолит', note:'≈14 кг', unit:'ящ.',  type:'counter' },
+  paket: { id:'paket', label:'Пакет',         note:'любой вес', unit:'кг', type:'kg'      },
+  lotok: { id:'lotok', label:'Лоток',          note:'≈0.8–1 кг', unit:'лот.', type:'counter' },
+};
+
+/* ── PRODUCTS (from price list, охлаждённые) ── */
+const PRODUCTS = [
+  { name:'Тушка ЦБ 1 сорт',                  price:235, pkg:['yasik','paket','lotok'] },
+  { name:'Бескостное мясо ЦБ',                price:350, pkg:['yasik'] },
+  { name:'Грудка ЦБ',                         price:270, pkg:['yasik','paket','lotok'] },
+  { name:'Филе грудки ЦБ',                    price:385, pkg:['yasik','paket','lotok'] },
+  { name:'Окорочка ЦБ',                       price:195, pkg:['yasik','paket','lotok'] },
+  { name:'Бескостные окорочка ЦБ',            price:380, pkg:['yasik','paket','lotok'] },
+  { name:'Голень ЦБ',                         price:225, pkg:['yasik','paket','lotok'] },
+  { name:'Бедро ЦБ',                          price:210, pkg:['yasik','paket','lotok'] },
+  { name:'Фарш ЦБ',                           price:360, pkg:['yasik','paket','lotok'] },
+  { name:'Крылья ЦБ',                         price:240, pkg:['yasik','paket','lotok'] },
+  { name:'Набор для шашлыка ЦБ',              price:290, pkg:['yasik','paket','lotok'] },
+  { name:'Набор для рагу ЦБ',                 price:235, pkg:['yasik','paket','lotok'] },
+  { name:'Набор для бульона ЦБ (хребты)',     price:50,  pkg:['yasik','paket','lotok'] },
+  { name:'Набор для супа ЦБ (килевая кость)', price:45,  pkg:['yasik','paket'] },
+  { name:'Шеи ЦБ',                            price:65,  pkg:['yasik','paket','lotok'] },
+  { name:'Головы ЦБ',                         price:60,  pkg:['yasik','paket','lotok'] },
+  { name:'Ноги ЦБ',                           price:50,  pkg:['yasik','paket'] },
+  { name:'Сердце ЦБ',                         price:390, pkg:['yasik','paket','lotok'] },
+  { name:'Печень ЦБ',                         price:210, pkg:['yasik','paket','lotok'] },
+  { name:'Желудок ЦБ',                        price:175, pkg:['yasik','paket','lotok'] },
+  { name:'Кожа ЦБ',                           price:45,  pkg:['yasik','paket'] },
+];
+
+const STATUSES = {
+  pending:  { label:'В обработке', color:ACC, bg:'#fef9ec' },
+  accepted: { label:'Принята',     color:NAT, bg:'#f2f7f3' },
+};
+
+/* ── STORAGE ── */
+const LS_O='lp_orders2', LS_C='lp_client';
+const getOrders  = ()=>{ try{ return JSON.parse(localStorage.getItem(LS_O)||'[]'); }catch{ return []; }};
+const saveOrders = o=>localStorage.setItem(LS_O,JSON.stringify(o));
+const addOrder   = o=>{ const a=getOrders(); a.unshift(o); saveOrders(a); };
+const setStatus  = (id,st)=>{ const a=getOrders(); const i=a.findIndex(o=>o.id===id); if(i>-1){a[i].status=st;saveOrders(a);} };
+const getClient  = ()=>{ try{ return JSON.parse(localStorage.getItem(LS_C)||'null'); }catch{ return null; }};
+const saveClient = c=>localStorage.setItem(LS_C,JSON.stringify(c));
+const genId      = ()=>Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
+const fmtDate    = iso=>{ const d=new Date(iso); return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); };
+const fmtShort   = d=>d.toLocaleDateString('ru-RU',{day:'2-digit',month:'long',weekday:'long'});
+
+/* ── SEED DEMO ── */
+(function seed(){
+  if(getOrders().length>0) return;
+  saveOrders([
+    { id:'DEMO01', clientName:'ИП Соколова А.В.', deliveryAddress:'г. Москва, ул. Садовая, д. 12',
+      createdAt:new Date(Date.now()-2*3600*1000).toISOString(),
+      items:[{product:'Филе грудки ЦБ',state:'Охлаждённое',packaging:'Ящик монолит',qty:'2',unit:'ящ.'},{product:'Бедро ЦБ',state:'Охлаждённое',packaging:'Пакет',qty:'14',unit:'кг'}],
+      comment:'Доставить до 12:00', status:'pending' },
+    { id:'DEMO02', clientName:'ООО Продукты Плюс', deliveryAddress:'г. Москва, пр-т Мира, д. 45',
+      createdAt:new Date(Date.now()-5*3600*1000).toISOString(),
+      items:[{product:'Тушка ЦБ 1 сорт',state:'Замороженное',packaging:'Ящик монолит',qty:'3',unit:'ящ.'},{product:'Голень ЦБ',state:'Охлаждённое',packaging:'Лоток',qty:'20',unit:'лот.'},{product:'Печень ЦБ',state:'Охлаждённое',packaging:'Пакет',qty:'5',unit:'кг'}],
+      comment:'', status:'accepted' },
+    { id:'DEMO03', clientName:'ИП Краснов П.И.', deliveryAddress:'г. Подольск, ул. Ленина, д. 3',
+      createdAt:new Date(Date.now()-25*60*1000).toISOString(),
+      items:[{product:'Окорочка ЦБ',state:'Охлаждённое',packaging:'Пакет',qty:'20',unit:'кг'},{product:'Крылья ЦБ',state:'Охлаждённое',packaging:'Пакет',qty:'10',unit:'кг'}],
+      comment:'Срочно, нужно до обеда', status:'pending' },
+  ]);
+})();
+
+/* ── DEADLINE LOGIC ── */
+function addWorkDays(date, n) {
+  const d = new Date(date);
+  let added = 0;
+  while (added < n) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+  }
+  return d;
+}
+function getDeadlineInfo() {
+  const now = new Date();
+  const pastCutoff = now.getHours() > 15 || (now.getHours() === 15 && now.getMinutes() > 0);
+  // Find next working deadline day
+  let deadline = new Date(now);
+  deadline.setHours(15, 0, 0, 0);
+  if (pastCutoff) deadline.setDate(deadline.getDate() + 1);
+  while (deadline.getDay() === 0 || deadline.getDay() === 6) deadline.setDate(deadline.getDate() + 1);
+  const shipment = addWorkDays(deadline, 2);
+  // Countdown to deadline
+  const msLeft = deadline.getTime() - now.getTime();
+  const isToday = deadline.toDateString() === now.toDateString();
+  const hoursLeft = Math.floor(msLeft / 3600000);
+  const minsLeft  = Math.floor((msLeft % 3600000) / 60000);
+  return { deadline, shipment, isToday, hoursLeft, minsLeft, msLeft, pastCutoff };
+}
+
+/* ── SHARED ── */
+function Logo() {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+      <svg width="28" height="28" viewBox="0 0 52 46" fill="none">
+        <ellipse cx="28" cy="32" rx="14" ry="10" fill={BR}/>
+        <circle cx="36" cy="20" r="10" fill={BR}/>
+        <polygon points="45,17 52,20 45,23" fill={ACC}/>
+        <circle cx="38" cy="18" r="2.5" fill="white"/>
+        <path d="M14,30 Q7,18 26,14 Q22,24 14,30Z" fill={BRH}/>
+      </svg>
+      <span style={{ fontFamily:FD, fontWeight:700, fontSize:17, color:DRK, lineHeight:1 }}>Ферма Лычкиных</span>
+    </div>
+  );
+}
+function LogoLight() {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+      <svg width="26" height="26" viewBox="0 0 52 46" fill="none">
+        <ellipse cx="28" cy="32" rx="14" ry="10" fill="#fae0dc"/>
+        <circle cx="36" cy="20" r="10" fill="#fae0dc"/>
+        <polygon points="45,17 52,20 45,23" fill={ACC}/>
+        <circle cx="38" cy="18" r="2.5" fill="white"/>
+        <path d="M14,30 Q7,18 26,14 Q22,24 14,30Z" fill="#f5bdb6"/>
+      </svg>
+      <span style={{ fontFamily:FD, fontWeight:700, fontSize:16, color:'#f5edd6', lineHeight:1 }}>Ферма Лычкиных</span>
+    </div>
+  );
+}
+function Badge({ status }) {
+  const s=STATUSES[status]||STATUSES.pending;
+  return <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:s.bg, color:s.color, fontFamily:FL, fontWeight:700, fontSize:11, letterSpacing:'.04em', padding:'3px 10px', borderRadius:9999 }}><span style={{ width:6, height:6, borderRadius:'50%', background:s.color, display:'inline-block' }}/>{s.label}</span>;
+}
+const inp = { width:'100%', fontFamily:FB, fontSize:14, color:DRK, background:CRD, border:`1.5px solid ${BRD}`, borderRadius:8, padding:'9px 12px', outline:'none' };
+const lbl = { display:'block', fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.07em', textTransform:'uppercase', color:FG2, marginBottom:4 };
+
+/* ── DEADLINE BANNER ── */
+function DeadlineBanner() {
+  const [info, setInfo] = useState(getDeadlineInfo);
+  useEffect(() => { const t=setInterval(()=>setInfo(getDeadlineInfo()),30000); return ()=>clearInterval(t); }, []);
+
+  const urgent = info.isToday && info.msLeft > 0 && info.hoursLeft < 3;
+  const bg = urgent ? '#fdf2f1' : '#f2f7f3';
+  const border = urgent ? BR : NAT;
+  const textColor = urgent ? BR : '#384e3e';
+
+  return (
+    <div style={{ background:bg, border:`1.5px solid ${border}`, borderRadius:10, padding:'12px 16px', marginBottom:20, display:'flex', flexWrap:'wrap', gap:12, alignItems:'center', justifyContent:'space-between' }}>
+      <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
+        <div>
+          <div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.07em', textTransform:'uppercase', color:textColor, marginBottom:2 }}>
+            {urgent ? '⏰ Срок приёма заявок' : '📋 Приём заявок до'}
+          </div>
+          <div style={{ fontFamily:FD, fontWeight:700, fontSize:15, color:DRK }}>
+            {fmtShort(info.deadline)}, до 15:00
+          </div>
+        </div>
+        <div style={{ width:1, background:border, opacity:.3 }}/>
+        <div>
+          <div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.07em', textTransform:'uppercase', color:FG3, marginBottom:2 }}>Ближайшая отгрузка</div>
+          <div style={{ fontFamily:FD, fontWeight:700, fontSize:15, color:DRK }}>{fmtShort(info.shipment)}</div>
+        </div>
+      </div>
+      {info.isToday && info.msLeft > 0 && (
+        <div style={{ background: urgent?BR:NAT, color:'white', borderRadius:8, padding:'8px 14px', textAlign:'center', minWidth:100 }}>
+          <div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.05em', opacity:.8 }}>ОСТАЛОСЬ</div>
+          <div style={{ fontFamily:FD, fontWeight:700, fontSize:16 }}>
+            {info.hoursLeft > 0 ? `${info.hoursLeft}ч ${info.minsLeft}м` : `${info.minsLeft} мин`}
+          </div>
+        </div>
+      )}
+      {info.pastCutoff && !info.isToday && (
+        <div style={{ fontFamily:FB, fontSize:12, color:FG3, fontStyle:'italic' }}>Сегодняшний приём завершён · следующий — завтра</div>
+      )}
+      <div style={{ width:'100%', fontFamily:FB, fontSize:11, color:FG3, marginTop:-4 }}>
+        Заказы принимаются за 2 рабочих дня до отгрузки · ИП Г КФХ Лычкин А.В. · цены указаны с учётом НДС
+      </div>
+    </div>
+  );
+}
+
+/* ── QUANTITY FIELD ── */
+function QtyField({ pkgId, value, onChange }) {
+  const p = PKG[pkgId];
+  if (p.type === 'kg') {
+    return (
+      <input
+        style={{ ...inp, fontSize:13, padding:'8px 10px', textAlign:'center' }}
+        type="number" min="0.1" step="0.1" placeholder="кг"
+        value={value} onChange={e=>onChange(e.target.value)}
+      />
+    );
+  }
+  // Counter for yasik / lotok
+  const count = parseInt(value||'1', 10) || 1;
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:0, border:`1.5px solid ${BRD}`, borderRadius:8, overflow:'hidden', background:CRD, height:38 }}>
+      <button
+        type="button"
+        onClick={()=>onChange(String(Math.max(1, count-1)))}
+        style={{ width:34, flexShrink:0, background:'none', border:'none', borderRight:`1px solid ${BRD}`, fontFamily:FL, fontWeight:800, fontSize:16, color:FG2, display:'flex', alignItems:'center', justifyContent:'center', height:'100%' }}
+      >−</button>
+      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:4, fontFamily:FB, fontSize:13, color:DRK, fontWeight:700 }}>
+        {count}<span style={{ fontFamily:FL, fontSize:10, fontWeight:700, color:FG3 }}>{p.unit}</span>
+      </div>
+      <button
+        type="button"
+        onClick={()=>onChange(String(count+1))}
+        style={{ width:34, flexShrink:0, background:'none', border:'none', borderLeft:`1px solid ${BRD}`, fontFamily:FL, fontWeight:800, fontSize:16, color:BR, display:'flex', alignItems:'center', justifyContent:'center', height:'100%' }}
+      >+</button>
+    </div>
+  );
+}
+
+/* ── LINE ITEM ROW ── */
+function LineItem({ item, idx, total, onChange, onRemove }) {
+  const prod = PRODUCTS.find(p=>p.name===item.product);
+  const availPkg = prod ? prod.pkg : ['yasik','paket','lotok'];
+
+  const handleProductChange = (name) => {
+    const p = PRODUCTS.find(x=>x.name===name);
+    const newPkg = p && !p.pkg.includes(item.packaging) ? p.pkg[0] : item.packaging;
+    const newQty = PKG[newPkg].type==='counter' ? '1' : '';
+    onChange(idx, { ...item, product:name, packaging:newPkg, qty:newQty });
+  };
+  const handlePkgChange = (pkgId) => {
+    const newQty = PKG[pkgId].type==='counter' ? '1' : '';
+    onChange(idx, { ...item, packaging:pkgId, qty:newQty });
+  };
+
+  const sel = { ...inp, fontSize:13, padding:'8px 10px' };
+
+  return (
+    <div style={{ background:CRD, borderRadius:12, boxShadow:`0 2px 8px rgba(61,43,31,.07)`, marginBottom:10, padding:'14px 16px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'2fr 120px 150px 130px 28px', gap:10, alignItems:'end' }}>
+        {/* product */}
+        <div>
+          <label style={lbl}>Продукт</label>
+          <select style={sel} value={item.product} onChange={e=>handleProductChange(e.target.value)}>
+            <option value="">— Выберите позицию —</option>
+            {PRODUCTS.map(p=>(
+              <option key={p.name} value={p.name}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+        {/* state */}
+        <div>
+          <label style={lbl}>Состояние</label>
+          <select style={sel} value={item.state} onChange={e=>onChange(idx,{...item,state:e.target.value})}>
+            <option value="Охлаждённое">Охлаждённое</option>
+            <option value="Замороженное">Замороженное</option>
+          </select>
+        </div>
+        {/* packaging */}
+        <div>
+          <label style={lbl}>Тара</label>
+          <select style={sel} value={item.packaging} onChange={e=>handlePkgChange(e.target.value)}>
+            {availPkg.map(pid=>(
+              <option key={pid} value={pid}>{PKG[pid].label} ({PKG[pid].note})</option>
+            ))}
+          </select>
+        </div>
+        {/* qty */}
+        <div>
+          <label style={lbl}>{PKG[item.packaging].type==='kg' ? 'Кол-во, кг' : 'Количество'}</label>
+          <QtyField pkgId={item.packaging} value={item.qty} onChange={v=>onChange(idx,{...item,qty:v})}/>
+        </div>
+        {/* remove */}
+        {total>1
+          ? <button type="button" onClick={()=>onRemove(idx)} style={{ background:'none', border:'none', color:FG3, fontSize:20, lineHeight:1, paddingBottom:6, alignSelf:'flex-end' }}>×</button>
+          : <div/>}
+      </div>
+
+    </div>
+  );
+}
+
+/* ── CLIENT LOGIN ── */
+function ClientLogin({ onLogin, onAdmin }) {
+  const [name,setName]=useState('');
+  const [addr,setAddr]=useState('');
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:BG, padding:24 }}>
+      <div style={{ background:CRD, borderRadius:16, boxShadow:`0 8px 32px rgba(61,43,31,.12)`, padding:'40px 36px', width:'100%', maxWidth:440 }}>
+        <div style={{ marginBottom:24 }}><Logo/></div>
+        <div style={{ fontFamily:FD, fontSize:22, fontWeight:700, color:DRK, marginBottom:6 }}>Система заявок</div>
+        <div style={{ fontFamily:FB, fontSize:14, color:FG2, marginBottom:28 }}>Введите данные вашей организации</div>
+        <form onSubmit={e=>{e.preventDefault();if(name.trim()&&addr.trim()){const c={name:name.trim(),address:addr.trim()};saveClient(c);onLogin(c);}}}>
+          <div style={{ marginBottom:14 }}>
+            <label style={lbl}>Наименование ИП / ООО</label>
+            <input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="ИП Иванов И.И." required/>
+          </div>
+          <div style={{ marginBottom:20 }}>
+            <label style={lbl}>Адрес доставки</label>
+            <input style={inp} value={addr} onChange={e=>setAddr(e.target.value)} placeholder="г. Москва, ул. Примерная, д.1" required/>
+          </div>
+          <button type="submit" style={{ width:'100%', background:BR, color:CRD, padding:'13px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:15, letterSpacing:'.04em', border:'none' }}>
+            Войти и оформить заказ
+          </button>
+        </form>
+        <div style={{ marginTop:18, textAlign:'center', fontFamily:FB, fontSize:12, color:FG3 }}>
+          Для сотрудников:{' '}<span style={{ color:BR, cursor:'pointer', textDecoration:'underline' }} onClick={onAdmin}>панель менеджера</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ORDER FORM ── */
+function OrderForm({ client, onHistory, onLogout }) {
+  const mkItem = () => ({ uid:genId(), product:'', state:'Охлаждённое', packaging:'yasik', qty:'1' });
+  const [items, setItems] = useState([mkItem()]);
+  const [comment, setComment] = useState('');
+  const [done, setDone] = useState(false);
+
+  const handleChange = (idx, newItem) => setItems(p=>p.map((it,i)=>i===idx?newItem:it));
+  const handleRemove = (idx) => setItems(p=>p.filter((_,i)=>i!==idx));
+
+  if (done) return (
+    <div style={{ minHeight:'100vh', background:BG, display:'flex', flexDirection:'column' }}>
+      <div style={{ background:CRD, borderBottom:`1px solid ${BRD}`, padding:'0 24px' }}>
+        <div style={{ maxWidth:900, margin:'0 auto', height:60, display:'flex', alignItems:'center' }}><Logo/></div>
+      </div>
+      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, padding:24 }}>
+        <div style={{ width:64, height:64, background:'#f2f7f3', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32 }}>✓</div>
+        <div style={{ fontFamily:FD, fontSize:26, fontWeight:700, color:DRK }}>Заявка принята!</div>
+        <div style={{ fontFamily:FB, fontSize:16, color:FG2 }}>Мы свяжемся с вами для подтверждения.</div>
+        <div style={{ display:'flex', gap:10, marginTop:8 }}>
+          <button onClick={()=>{setDone(false);setItems([mkItem()]);setComment('');}} style={{ background:BR, color:CRD, padding:'12px 24px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:14, border:'none' }}>Новый заказ</button>
+          <button onClick={onHistory} style={{ background:'none', color:BR, padding:'12px 24px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:14, border:`2px solid ${BR}` }}>История заказов</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ background:BG, minHeight:'100vh', paddingBottom:60 }}>
+      <div style={{ background:CRD, borderBottom:`1px solid ${BRD}`, padding:'0 24px', position:'sticky', top:0, zIndex:10 }}>
+        <div style={{ maxWidth:900, margin:'0 auto', height:60, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <Logo/>
+          <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+            <button onClick={onHistory} style={{ background:'none', border:'none', fontFamily:FL, fontWeight:700, fontSize:12, letterSpacing:'.04em', color:BR }}>История заказов →</button>
+            <button onClick={onLogout} style={{ background:'none', border:`1px solid ${BRD}`, borderRadius:6, fontFamily:FL, fontWeight:700, fontSize:11, color:FG3, padding:'5px 12px' }}>Выйти</button>
+          </div>
+        </div>
+      </div>
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 24px' }}>
+        <div style={{ fontFamily:FD, fontSize:20, fontWeight:700, color:DRK, marginBottom:2 }}>Новая заявка</div>
+        <div style={{ fontFamily:FB, fontSize:13, color:FG2, marginBottom:18 }}>{client.name} · {client.address}</div>
+
+        <DeadlineBanner/>
+
+        <div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.08em', textTransform:'uppercase', color:FG3, marginBottom:8 }}>Позиции заказа</div>
+
+        {items.map((item,idx)=>(
+          <LineItem key={item.uid} item={item} idx={idx} total={items.length} onChange={handleChange} onRemove={handleRemove}/>
+        ))}
+
+        <button type="button" onClick={()=>setItems(p=>[...p,mkItem()])} style={{ background:'none', border:`1.5px dashed ${BRD}`, borderRadius:8, padding:'10px', width:'100%', fontFamily:FL, fontWeight:700, fontSize:13, color:FG2, marginBottom:18 }}>
+          + Добавить позицию
+        </button>
+
+        <div style={{ marginBottom:16 }}>
+          <label style={lbl}>Комментарий к заказу</label>
+          <textarea style={{...inp, resize:'vertical', minHeight:68}} placeholder="Особые пожелания, удобное время доставки..." value={comment} onChange={e=>setComment(e.target.value)}/>
+        </div>
+
+        <button onClick={()=>{
+          if(items.some(it=>!it.product||!it.qty)){alert('Заполните все позиции');return;}
+          addOrder({ id:genId(), clientName:client.name, deliveryAddress:client.address,
+            createdAt:new Date().toISOString(),
+            items:items.map(it=>{
+              const p=PKG[it.packaging];
+              return { product:it.product, state:it.state, packaging:p.label, qty:it.qty, unit:p.unit };
+            }),
+            comment, status:'pending' });
+          setDone(true);
+        }} style={{ background:BR, color:CRD, padding:'14px 32px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:15, letterSpacing:'.04em', border:'none' }}>
+          Отправить заявку
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── ORDER HISTORY (CLIENT) ── */
+function OrderHistory({ client, onBack }) {
+  const [orders] = useState(()=>getOrders().filter(o=>o.clientName===client.name));
+  const thS={fontFamily:FL,fontWeight:700,fontSize:10,letterSpacing:'.06em',textTransform:'uppercase',color:FG3,padding:'8px 16px',textAlign:'left',background:ALT,borderBottom:`1px solid ${BRD}`};
+  const tdS={fontFamily:FB,fontSize:13,color:DRK,padding:'10px 16px',borderBottom:`1px solid ${BRD}`};
+  return (
+    <div style={{ background:BG, minHeight:'100vh', paddingBottom:60 }}>
+      <div style={{ background:CRD, borderBottom:`1px solid ${BRD}`, padding:'0 24px', position:'sticky', top:0, zIndex:10 }}>
+        <div style={{ maxWidth:900, margin:'0 auto', height:60, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <Logo/><button onClick={onBack} style={{ background:'none', border:'none', fontFamily:FL, fontWeight:700, fontSize:12, color:BR }}>← Новый заказ</button>
+        </div>
+      </div>
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'28px 24px' }}>
+        <div style={{ fontFamily:FD, fontSize:20, fontWeight:700, color:DRK, marginBottom:4 }}>История заказов</div>
+        <div style={{ fontFamily:FB, fontSize:13, color:FG2, marginBottom:22 }}>{client.name}</div>
+        {orders.length===0
+          ? <div style={{ textAlign:'center', padding:'60px 0', fontFamily:FB, fontSize:15, color:FG3 }}>Заказов пока нет</div>
+          : orders.map(order=>(
+            <div key={order.id} style={{ background:CRD, borderRadius:12, boxShadow:`0 2px 8px rgba(61,43,31,.08)`, marginBottom:12, overflow:'hidden' }}>
+              <div style={{ padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:`1px solid ${BRD}` }}>
+                <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+                  <span style={{ fontFamily:FL, fontWeight:700, fontSize:11, color:FG3 }}>№ {order.id}</span>
+                  <span style={{ fontFamily:FB, fontSize:12, color:FG3 }}>{fmtDate(order.createdAt)}</span>
+                </div>
+                <Badge status={order.status}/>
+              </div>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead><tr>
+                  <th style={thS}>Продукт</th><th style={thS}>Состояние</th><th style={thS}>Тара</th><th style={thS}>Кол-во</th>
+                </tr></thead>
+                <tbody>{order.items.map((it,i)=>(
+                  <tr key={i}>
+                    <td style={tdS}>{it.product}</td>
+                    <td style={tdS}>{it.state||'—'}</td>
+                    <td style={tdS}>{it.packaging}</td>
+                    <td style={tdS}>{it.qty} {it.unit}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+              {order.comment&&<div style={{ padding:'8px 18px', fontFamily:FB, fontSize:12, color:FG2, background:ALT }}>💬 {order.comment}</div>}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN LOGIN ── */
+function AdminLogin({ onLogin, onBack }) {
+  const [pw,setPw]=useState('');
+  const [err,setErr]=useState(false);
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:DRK, padding:24 }}>
+      <div style={{ background:CRD, borderRadius:16, boxShadow:'0 16px 48px rgba(0,0,0,.25)', padding:'40px 36px', width:'100%', maxWidth:360 }}>
+        <div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.08em', textTransform:'uppercase', color:FG3, background:ALT, display:'inline-block', padding:'4px 10px', borderRadius:9999, marginBottom:18 }}>ПАНЕЛЬ МЕНЕДЖЕРА</div>
+        <div style={{ fontFamily:FD, fontSize:22, fontWeight:700, color:DRK, marginBottom:6 }}>Вход для сотрудников</div>
+        <div style={{ fontFamily:FB, fontSize:13, color:FG2, marginBottom:26 }}>Ферма Лычкиных · Система заявок</div>
+        <form onSubmit={e=>{ e.preventDefault(); pw==='лычкины2024'?onLogin():setErr(true); }}>
+          <div style={{ marginBottom:err?4:16 }}>
+            <label style={lbl}>Пароль</label>
+            <input style={{...inp,borderColor:err?BR:BRD}} type="password" value={pw} onChange={e=>{setPw(e.target.value);setErr(false);}} placeholder="Введите пароль" required/>
+          </div>
+          {err&&<div style={{ fontFamily:FB, fontSize:12, color:BR, marginBottom:12 }}>Неверный пароль</div>}
+          <button type="submit" style={{ width:'100%', background:DRK, color:'#fdfaf4', padding:'13px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:15, border:'none', marginTop:4 }}>Войти</button>
+        </form>
+        <div style={{ marginTop:16, textAlign:'center' }}>
+          <span style={{ fontFamily:FB, fontSize:12, color:FG3, cursor:'pointer', textDecoration:'underline' }} onClick={onBack}>← К форме заказа</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ORDER DETAIL MODAL ── */
+function OrderModal({ order, onClose, onStatus }) {
+  if (!order) return null;
+  const thS={fontFamily:FL,fontWeight:700,fontSize:10,letterSpacing:'.06em',textTransform:'uppercase',color:FG3,padding:'8px 14px',textAlign:'left',background:ALT,borderBottom:`1px solid ${BRD}`};
+  const tdS={fontFamily:FB,fontSize:13,color:DRK,padding:'9px 14px',borderBottom:`1px solid ${BRD}`};
+  const stBtn=(active,color)=>({ flex:1, padding:'10px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:13, border:`2px solid ${color}`, background:active?color:'transparent', color:active?'white':color, cursor:'pointer' });
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(61,43,31,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ background:CRD, borderRadius:16, boxShadow:'0 16px 48px rgba(61,43,31,.2)', width:'100%', maxWidth:600, maxHeight:'90vh', overflowY:'auto' }}>
+        <div style={{ padding:'18px 22px', borderBottom:`1px solid ${BRD}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+          <div>
+            <div style={{ fontFamily:FD, fontSize:18, fontWeight:700, color:DRK }}>Заявка № {order.id}</div>
+            <div style={{ fontFamily:FB, fontSize:12, color:FG3, marginTop:3 }}>{fmtDate(order.createdAt)}</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:22, color:FG3, lineHeight:1 }}>×</button>
+        </div>
+        <div style={{ padding:'18px 22px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
+            <div><div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.06em', textTransform:'uppercase', color:FG3, marginBottom:3 }}>Клиент</div><div style={{ fontFamily:FB, fontSize:14, color:DRK }}>{order.clientName}</div></div>
+            <div><div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.06em', textTransform:'uppercase', color:FG3, marginBottom:3 }}>Адрес</div><div style={{ fontFamily:FB, fontSize:14, color:DRK }}>{order.deliveryAddress}</div></div>
+          </div>
+          <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:14 }}>
+            <thead><tr><th style={thS}>Продукт</th><th style={thS}>Состояние</th><th style={thS}>Тара</th><th style={thS}>Кол-во</th></tr></thead>
+            <tbody>{order.items.map((it,i)=>(
+              <tr key={i}><td style={tdS}>{it.product}</td><td style={tdS}>{it.state||'—'}</td><td style={tdS}>{it.packaging}</td><td style={tdS}>{it.qty} {it.unit}</td></tr>
+            ))}</tbody>
+          </table>
+          {order.comment&&<div style={{ background:ALT, borderRadius:8, padding:'10px 14px', fontFamily:FB, fontSize:13, color:FG2, marginBottom:14 }}>💬 {order.comment}</div>}
+          <div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.07em', textTransform:'uppercase', color:FG3, marginBottom:8 }}>Изменить статус</div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button style={stBtn(order.status==='pending',ACC)} onClick={()=>onStatus(order.id,'pending')}>В обработке</button>
+            <button style={stBtn(order.status==='accepted',NAT)} onClick={()=>onStatus(order.id,'accepted')}>Принята ✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN PANEL ── */
+function AdminPanel({ onLogout }) {
+  const [orders,setOrders]=useState(getOrders);
+  const [filter,setFilter]=useState('all');
+  const [search,setSearch]=useState('');
+  const [selected,setSelected]=useState(null);
+  useEffect(()=>{ const t=setInterval(()=>setOrders(getOrders()),5000); return()=>clearInterval(t); },[]);
+
+  const changeStatus=(id,st)=>{
+    setStatus(id,st);
+    setOrders(prev=>prev.map(o=>o.id===id?{...o,status:st}:o));
+    setSelected(prev=>prev?.id===id?{...prev,status:st}:prev);
+  };
+  const filtered=orders.filter(o=>{
+    if(filter!=='all'&&o.status!==filter) return false;
+    if(search){const q=search.toLowerCase();return o.clientName.toLowerCase().includes(q)||o.id.toLowerCase().includes(q)||o.items.some(it=>it.product.toLowerCase().includes(q));}
+    return true;
+  });
+  const newCount=orders.filter(o=>Date.now()-new Date(o.createdAt).getTime()<10*60*1000&&o.status==='pending').length;
+  const pending=orders.filter(o=>o.status==='pending').length;
+  const accepted=orders.filter(o=>o.status==='accepted').length;
+
+  const exportXLSX=()=>{
+    if(!window.XLSX){alert('Excel недоступен');return;}
+    const rows=[];
+    (filter==='all'?orders:orders.filter(o=>o.status===filter)).forEach(o=>{
+      o.items.forEach(it=>rows.push({
+        'Номер':o.id,'Дата':fmtDate(o.createdAt),'Клиент':o.clientName,'Адрес':o.deliveryAddress,
+        'Продукт':it.product,'Состояние':it.state||'','Тара':it.packaging,'Кол-во':it.qty,'Ед.':it.unit,
+        'Комментарий':o.comment||'','Статус':STATUSES[o.status]?.label||o.status
+      }));
+    });
+    const ws=window.XLSX.utils.json_to_sheet(rows);
+    ws['!cols']=[10,16,22,26,22,13,14,8,6,28,12].map(w=>({wch:w}));
+    const wb=window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb,ws,'Заявки');
+    window.XLSX.writeFile(wb,`Заявки_${new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')}.xlsx`);
+  };
+
+  const thS={fontFamily:FL,fontWeight:700,fontSize:10,letterSpacing:'.07em',textTransform:'uppercase',color:FG3,padding:'10px 14px',textAlign:'left',background:ALT,borderBottom:`1px solid ${BRD}`};
+  const tdS={fontFamily:FB,fontSize:13,color:DRK,padding:'11px 14px',borderBottom:`1px solid ${BRD}`};
+  const fBtn=a=>({ fontFamily:FL, fontWeight:700, fontSize:12, letterSpacing:'.04em', padding:'6px 14px', borderRadius:9999, border:`1.5px solid ${a?BR:BRD}`, background:a?BR:'transparent', color:a?'white':DRK, cursor:'pointer' });
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', minHeight:'100vh', background:BG }}>
+      <div style={{ background:DRK, padding:'0 24px', flexShrink:0 }}>
+        <div style={{ maxWidth:1200, margin:'0 auto', height:54, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+            <LogoLight/>
+            {newCount>0&&<span style={{ background:BR, color:'white', fontFamily:FL, fontWeight:700, fontSize:11, padding:'3px 10px', borderRadius:9999 }}>{newCount} новых</span>}
+          </div>
+          <button onClick={onLogout} style={{ background:'none', border:`1px solid #5e4426`, borderRadius:6, padding:'5px 14px', fontFamily:FL, fontWeight:700, fontSize:11, color:'#9a8070' }}>Выйти</button>
+        </div>
+      </div>
+      <div style={{ background:CRD, borderBottom:`1px solid ${BRD}`, padding:'0 24px', flexShrink:0 }}>
+        <div style={{ maxWidth:1200, margin:'0 auto', height:54, display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ position:'relative', flex:1, maxWidth:300 }}>
+            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:13 }}>🔍</span>
+            <input style={{...inp,background:ALT,padding:'7px 12px 7px 32px',fontSize:13}} placeholder="Поиск..." value={search} onChange={e=>setSearch(e.target.value)}/>
+          </div>
+          <button style={fBtn(filter==='all')} onClick={()=>setFilter('all')}>Все ({orders.length})</button>
+          <button style={fBtn(filter==='pending')} onClick={()=>setFilter('pending')}>В обработке ({pending})</button>
+          <button style={fBtn(filter==='accepted')} onClick={()=>setFilter('accepted')}>Принятые ({accepted})</button>
+          <div style={{ flex:1 }}/>
+          <button onClick={exportXLSX} style={{ background:'#1D6F42', color:'white', padding:'7px 16px', borderRadius:7, fontFamily:FL, fontWeight:700, fontSize:12, letterSpacing:'.04em', border:'none', display:'flex', alignItems:'center', gap:6 }}>↓ Excel</button>
+        </div>
+      </div>
+      <div style={{ flex:1, overflowY:'auto' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto', padding:'20px 24px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:18 }}>
+            {[['В обработке',pending,ACC],['Принятые',accepted,NAT],['Всего заявок',orders.length,FG3]].map(([l,n,c])=>(
+              <div key={l} style={{ background:CRD, borderRadius:10, padding:'14px 18px', boxShadow:`0 2px 8px rgba(61,43,31,.07)`, borderLeft:`3px solid ${c}` }}>
+                <div style={{ fontFamily:FD, fontSize:26, fontWeight:700, color:DRK }}>{n}</div>
+                <div style={{ fontFamily:FB, fontSize:12, color:FG3 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+          {filtered.length===0
+            ?<div style={{ textAlign:'center', padding:'60px 0', fontFamily:FB, fontSize:15, color:FG3 }}>Заявок не найдено</div>
+            :<div style={{ background:CRD, borderRadius:12, boxShadow:`0 2px 8px rgba(61,43,31,.07)`, overflow:'hidden' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead><tr>
+                  <th style={thS}>№ Заявки</th><th style={thS}>Дата и время</th><th style={thS}>Клиент</th><th style={thS}>Позиции</th><th style={thS}>Статус</th>
+                </tr></thead>
+                <tbody>{filtered.map(order=>{
+                  const isNew=Date.now()-new Date(order.createdAt).getTime()<10*60*1000&&order.status==='pending';
+                  return (
+                    <tr key={order.id} style={{ cursor:'pointer' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='#fef9f8'}
+                      onMouseLeave={e=>e.currentTarget.style.background=CRD}
+                      onClick={()=>setSelected(order)}>
+                      <td style={tdS}>{isNew&&<span style={{ display:'inline-block', width:7, height:7, borderRadius:'50%', background:BR, marginRight:5, verticalAlign:'middle' }}/>}<span style={{ fontFamily:FL, fontWeight:700, fontSize:11, color:FG3 }}>{order.id}</span></td>
+                      <td style={{...tdS,fontSize:12}}>{fmtDate(order.createdAt)}</td>
+                      <td style={{...tdS,fontWeight:700}}>{order.clientName}</td>
+                      <td style={{...tdS,color:FG2,fontSize:12}}>{order.items.length} поз. · {order.items.map(i=>i.product).join(', ').slice(0,50)}{order.items.map(i=>i.product).join(', ').length>50?'…':''}</td>
+                      <td style={tdS}><Badge status={order.status}/></td>
+                    </tr>
+                  );
+                })}</tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </div>
+      <OrderModal order={selected} onClose={()=>setSelected(null)} onStatus={changeStatus}/>
+    </div>
+  );
+}
+
+/* ── ROOT APP ── */
+function App() {
+  const [mode,setMode]=useState(()=>window.location.hash==='#admin'?'admin':'client');
+  const [adminAuthed,setAdminAuthed]=useState(false);
+  const [client,setClient]=useState(getClient);
+  const [view,setView]=useState('form');
+
+  const goAdmin=()=>{window.location.hash='#admin';setMode('admin');};
+  const goClient=()=>{window.location.hash='';setMode('client');setAdminAuthed(false);};
+
+  if(mode==='admin'){
+    if(!adminAuthed) return <AdminLogin onLogin={()=>setAdminAuthed(true)} onBack={goClient}/>;
+    return <AdminPanel onLogout={goClient}/>;
+  }
+  if(!client) return <ClientLogin onLogin={c=>setClient(c)} onAdmin={goAdmin}/>;
+  if(view==='history') return <OrderHistory client={client} onBack={()=>setView('form')}/>;
+  return <OrderForm client={client} onHistory={()=>setView('history')} onLogout={()=>{saveClient(null);setClient(null);}}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

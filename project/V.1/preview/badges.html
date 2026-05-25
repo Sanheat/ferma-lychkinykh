@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--bg-page); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 16px; }
+  .label { font-family: var(--font-label); font-size: 10px; font-weight: 700; letter-spacing:.08em; text-transform:uppercase; color:var(--fg-tertiary); margin-bottom:8px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--font-label); font-weight: 700; letter-spacing: .05em;
+    border-radius: var(--radius-pill); font-size: 11px; padding: 4px 10px;
+    text-transform: uppercase;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .tag {
+    display: inline-flex; align-items: center;
+    font-family: var(--font-body); font-size: 12px; font-weight: 400;
+    border-radius: var(--radius-sm); padding: 3px 8px;
+  }
+</style>
+</head>
+<body>
+  <div class="label">Бейджи статуса</div>
+  <div class="row">
+    <span class="badge" style="background:#fae0dc; color:#8a2a19"><span class="dot" style="background:#c94030"></span>В наличии</span>
+    <span class="badge" style="background:#fef9ec; color:#7d500e"><span class="dot" style="background:#e8a838"></span>Скоро</span>
+    <span class="badge" style="background:#f2f7f3; color:#384e3e"><span class="dot" style="background:#7a9e7e"></span>Свежее</span>
+    <span class="badge" style="background:#f5edd6; color:#5e4426"><span class="dot" style="background:#9a7340"></span>Сезонное</span>
+    <span class="badge" style="background:#f5edd6; color:#9a8070">Нет в наличии</span>
+  </div>
+
+  <div class="label">Категорийные теги</div>
+  <div class="row">
+    <span class="tag" style="background:var(--color-primary-100); color:var(--color-primary-700)">Яйца</span>
+    <span class="tag" style="background:var(--color-gold-100); color:var(--color-gold-700)">Мясо птицы</span>
+    <span class="tag" style="background:var(--color-green-100); color:var(--color-green-700)">Натуральный</span>
+    <span class="tag" style="background:var(--color-warm-100); color:var(--color-warm-700)">Свежий</span>
+    <span class="tag" style="background:var(--color-warm-100); color:var(--color-warm-700)">Фермерский</span>
+  </div>
+
+  <div class="label">Промо-бейджи</div>
+  <div class="row">
+    <span class="badge" style="background:var(--brand); color:white">Новинка</span>
+    <span class="badge" style="background:var(--accent); color:var(--fg-primary)">−15%</span>
+    <span class="badge" style="background:var(--nature); color:white">Эко</span>
+    <span class="badge" style="background:var(--bg-dark); color:var(--fg-on-dark)">Хит продаж</span>
+  </div>
+</body>
+</html>

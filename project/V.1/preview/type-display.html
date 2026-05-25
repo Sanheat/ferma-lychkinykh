@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-page); }
+  .specimen { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); display: flex; align-items: baseline; gap: 20px; }
+  .specimen:last-child { border-bottom: none; margin-bottom: 0; }
+  .meta { min-width: 90px; flex-shrink: 0; }
+  .meta-name { font-family: var(--font-label); font-size: 9px; font-weight: 700; letter-spacing:.08em; text-transform:uppercase; color: var(--fg-tertiary); }
+  .meta-size { font-family: var(--font-body); font-size: 9px; color: var(--fg-tertiary); margin-top: 2px; }
+</style>
+</head>
+<body>
+  <div class="specimen">
+    <div class="meta"><div class="meta-name">H1 / Display</div><div class="meta-size">PT Serif 48px / 700</div></div>
+    <div class="h1" style="font-size:2.4rem">Свежие яйца с фермы</div>
+  </div>
+  <div class="specimen">
+    <div class="meta"><div class="meta-name">H2 / Title</div><div class="meta-size">PT Serif 36px / 700</div></div>
+    <div class="h2" style="font-size:2rem">Наши продукты</div>
+  </div>
+  <div class="specimen">
+    <div class="meta"><div class="meta-name">H3 / Section</div><div class="meta-size">PT Serif 24px / 700</div></div>
+    <div class="h3">Куриные яйца</div>
+  </div>
+  <div class="specimen">
+    <div class="meta"><div class="meta-name">H4 / Card Title</div><div class="meta-size">PT Sans 20px / 700</div></div>
+    <div class="h4">Яйца первой категории</div>
+  </div>
+  <div class="specimen">
+    <div class="meta"><div class="meta-name">Italic Display</div><div class="meta-size">PT Serif Italic</div></div>
+    <div style="font-family: var(--font-display); font-size: 2rem; font-style: italic; color: var(--fg-secondary); line-height:1.2">«С заботой о каждой птичке»</div>
+  </div>
+</body>
+</html>

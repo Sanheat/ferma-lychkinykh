@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-section-alt); display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+  .variant { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .variant-label { font-family: var(--font-label); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-tertiary); }
+  .logo-bg { padding: 20px 24px; border-radius: var(--radius-lg); }
+</style>
+</head>
+<body>
+  <div class="variant">
+    <div class="variant-label">Светлый фон</div>
+    <div class="logo-bg" style="background: white; box-shadow: var(--shadow-sm)">
+      <img src="../assets/logo-placeholder.svg" width="240" alt="Лычкины птички">
+    </div>
+  </div>
+  <div class="variant">
+    <div class="variant-label">Тёмный фон</div>
+    <div class="logo-bg" style="background: var(--bg-dark)">
+      <img src="../assets/logo-placeholder.svg" width="240" alt="Лычкины птички">
+    </div>
+  </div>
+  <div class="variant">
+    <div class="variant-label">Кремовый фон</div>
+    <div class="logo-bg" style="background: var(--bg-section-alt)">
+      <img src="../assets/logo-placeholder.svg" width="240" alt="Лычкины птички">
+    </div>
+  </div>
+</body>
+</html>

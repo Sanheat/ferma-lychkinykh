@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--bg-page); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .token { border-radius: var(--radius-md); overflow: hidden; border: 1px solid rgba(0,0,0,0.06); }
+  .chip  { height: 44px; }
+  .info  { padding: 6px 8px; background: white; }
+  .tname { font-family: var(--font-label); font-size: 9px; font-weight: 700; letter-spacing:.05em; color: var(--fg-tertiary); text-transform:uppercase; }
+  .tdesc { font-family: var(--font-body); font-size: 10px; color: var(--fg-secondary); margin-top:1px; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="token"><div class="chip" style="background:#c94030"></div><div class="info"><div class="tname">--brand</div><div class="tdesc">Кнопки, ссылки, акцент</div></div></div>
+  <div class="token"><div class="chip" style="background:#e8a838"></div><div class="info"><div class="tname">--accent</div><div class="tdesc">Метки, выделения</div></div></div>
+  <div class="token"><div class="chip" style="background:#7a9e7e"></div><div class="info"><div class="tname">--nature</div><div class="tdesc">Природный акцент</div></div></div>
+  <div class="token"><div class="chip" style="background:#3d2b1f"></div><div class="info"><div class="tname">--fg-primary</div><div class="tdesc">Основной текст</div></div></div>
+  <div class="token"><div class="chip" style="background:#6b5245"></div><div class="info"><div class="tname">--fg-secondary</div><div class="tdesc">Вторичный текст</div></div></div>
+  <div class="token"><div class="chip" style="background:#9a8070"></div><div class="info"><div class="tname">--fg-tertiary</div><div class="tdesc">Подсказки, плейсхолдер</div></div></div>
+  <div class="token"><div class="chip" style="background:#fdfaf4; border-bottom:1px solid #e8d9c4"></div><div class="info"><div class="tname">--bg-page</div><div class="tdesc">Фон страницы</div></div></div>
+  <div class="token"><div class="chip" style="background:#f5edd6"></div><div class="info"><div class="tname">--bg-section-alt</div><div class="tdesc">Чередующиеся секции</div></div></div>
+  <div class="token"><div class="chip" style="background:white; border-bottom:1px solid #e8d9c4"></div><div class="info"><div class="tname">--bg-card</div><div class="tdesc">Карточки, панели</div></div></div>
+  <div class="token"><div class="chip" style="background:#f2f7f3"></div><div class="info"><div class="tname">--bg-nature</div><div class="tdesc">Природные секции</div></div></div>
+  <div class="token"><div class="chip" style="background:#3d2b1f"></div><div class="info"><div class="tname">--bg-dark</div><div class="tdesc">Тёмный футер</div></div></div>
+  <div class="token"><div class="chip" style="background:#e8d9c4"></div><div class="info"><div class="tname">--border-light</div><div class="tdesc">Светлые границы</div></div></div>
+</div>
+</body>
+</html>

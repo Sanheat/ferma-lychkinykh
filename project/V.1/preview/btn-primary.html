@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-page); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .label { font-family: var(--font-label); font-size: 10px; font-weight: 700; letter-spacing:.08em; text-transform:uppercase; color:var(--fg-tertiary); margin-bottom:8px; }
+  btn, .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-label); font-weight: 700; letter-spacing: .05em;
+    border: none; cursor: pointer; transition: all var(--duration-fast) var(--ease-out);
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--brand); color: white;
+    padding: 12px 24px; border-radius: var(--radius-md); font-size: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .btn-primary:hover { background: var(--brand-hover); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .btn-primary:active { transform: scale(.97); box-shadow: var(--shadow-xs); }
+
+  .btn-primary-lg {
+    background: var(--brand); color: white;
+    padding: 15px 32px; border-radius: var(--radius-md); font-size: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-secondary {
+    background: transparent; color: var(--brand);
+    padding: 11px 22px; border-radius: var(--radius-md); font-size: 14px;
+    border: 2px solid var(--brand);
+  }
+  .btn-secondary:hover { background: var(--brand-light); }
+
+  .btn-ghost {
+    background: transparent; color: var(--fg-secondary);
+    padding: 11px 22px; border-radius: var(--radius-md); font-size: 14px;
+    border: 2px solid var(--border-medium);
+  }
+  .btn-ghost:hover { border-color: var(--fg-secondary); color: var(--fg-primary); }
+
+  .btn-gold {
+    background: var(--accent); color: var(--fg-primary);
+    padding: 12px 24px; border-radius: var(--radius-md); font-size: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .btn-gold:hover { background: var(--accent-hover); }
+
+  .btn-nature {
+    background: var(--nature); color: white;
+    padding: 12px 24px; border-radius: var(--radius-md); font-size: 14px;
+  }
+
+  .btn-disabled {
+    background: var(--border-light); color: var(--fg-tertiary);
+    padding: 12px 24px; border-radius: var(--radius-md); font-size: 14px;
+    cursor: not-allowed;
+  }
+
+  .btn-pill {
+    background: var(--brand); color: white;
+    padding: 10px 22px; border-radius: var(--radius-pill); font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <div class="label">Основные кнопки</div>
+  <div class="row">
+    <button class="btn btn-primary-lg">Заказать сейчас</button>
+    <button class="btn btn-primary">Купить</button>
+    <button class="btn btn-gold">Узнать цену</button>
+    <button class="btn btn-nature">О ферме</button>
+  </div>
+
+  <div class="label">Вторичные и Ghost</div>
+  <div class="row">
+    <button class="btn btn-secondary">Подробнее</button>
+    <button class="btn btn-ghost">Посмотреть всё</button>
+    <button class="btn btn-pill">Записаться →</button>
+  </div>
+
+  <div class="label">Состояние: неактивна</div>
+  <div class="row">
+    <button class="btn btn-disabled" disabled>Нет в наличии</button>
+  </div>
+</body>
+</html>

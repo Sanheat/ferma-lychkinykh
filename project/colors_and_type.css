@@ -1,0 +1,395 @@
+/* ============================================================
+   Лычкины птички — Design System
+   colors_and_type.css
+   ============================================================ */
+
+/* ── BRAND FONTS — Inter (optical sizes) ─────────────────
+   18pt cut → body, labels, captions (text sizes)
+   28pt cut → display & headings (large sizes)
+   ──────────────────────────────────────────────────────── */
+
+/* Inter — 18pt optical (Text) */
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-Thin.ttf')             format('truetype'); font-weight: 100; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-ThinItalic.ttf')       format('truetype'); font-weight: 100; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-ExtraLight.ttf')       format('truetype'); font-weight: 200; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-ExtraLightItalic.ttf') format('truetype'); font-weight: 200; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-Light.ttf')            format('truetype'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-LightItalic.ttf')      format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-Regular.ttf')          format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-Italic.ttf')           format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-Medium.ttf')           format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-MediumItalic.ttf')     format('truetype'); font-weight: 500; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-SemiBold.ttf')         format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-SemiBoldItalic.ttf')   format('truetype'); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-Bold.ttf')             format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-BoldItalic.ttf')       format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-ExtraBold.ttf')        format('truetype'); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-ExtraBoldItalic.ttf')  format('truetype'); font-weight: 800; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-Black.ttf')            format('truetype'); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('fonts/Inter_18pt-BlackItalic.ttf')      format('truetype'); font-weight: 900; font-style: italic; font-display: swap; }
+
+/* Inter Display — 28pt optical (Display) */
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-Thin.ttf')             format('truetype'); font-weight: 100; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-ThinItalic.ttf')       format('truetype'); font-weight: 100; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-ExtraLight.ttf')       format('truetype'); font-weight: 200; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-ExtraLightItalic.ttf') format('truetype'); font-weight: 200; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-Light.ttf')            format('truetype'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-LightItalic.ttf')      format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-Regular.ttf')          format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-Italic.ttf')           format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-Medium.ttf')           format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-MediumItalic.ttf')     format('truetype'); font-weight: 500; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-SemiBold.ttf')         format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-SemiBoldItalic.ttf')   format('truetype'); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-Bold.ttf')             format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-BoldItalic.ttf')       format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-ExtraBold.ttf')        format('truetype'); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-ExtraBoldItalic.ttf')  format('truetype'); font-weight: 800; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-Black.ttf')            format('truetype'); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Inter Display'; src: url('fonts/Inter_28pt-BlackItalic.ttf')      format('truetype'); font-weight: 900; font-style: italic; font-display: swap; }
+
+/* ── BASE COLOR PALETTE ─────────────────────────────────── */
+:root {
+  /* Primary — Barn Red / Terracotta */
+  --color-primary-50:  #fdf2f1;
+  --color-primary-100: #fae0dc;
+  --color-primary-200: #f5bdb6;
+  --color-primary-300: #ee9085;
+  --color-primary-400: #e45b4a;
+  --color-primary-500: #c94030;   /* main brand red */
+  --color-primary-600: #a8331f;
+  --color-primary-700: #8a2a19;
+  --color-primary-800: #6e2116;
+  --color-primary-900: #4a1610;
+
+  /* Secondary — Golden Yellow (egg yolk / wheat) */
+  --color-gold-50:   #fef9ec;
+  --color-gold-100:  #fdf0c8;
+  --color-gold-200:  #fbe190;
+  --color-gold-300:  #f8cc55;
+  --color-gold-400:  #e8a838;   /* main gold */
+  --color-gold-500:  #d08b1e;
+  --color-gold-600:  #a86c10;
+  --color-gold-700:  #7d500e;
+  --color-gold-800:  #52360b;
+  --color-gold-900:  #2d1d06;
+
+  /* Accent — Sage / Meadow Green */
+  --color-green-50:  #f2f7f3;
+  --color-green-100: #e0ecdf;
+  --color-green-200: #bdd9bf;
+  --color-green-300: #95bf98;
+  --color-green-400: #7a9e7e;   /* main sage */
+  --color-green-500: #5e8062;
+  --color-green-600: #4a6650;
+  --color-green-700: #384e3e;
+  --color-green-800: #263530;
+  --color-green-900: #151e18;
+
+  /* Neutral Warm — Cream / Straw / Soil */
+  --color-warm-50:  #fdfaf4;   /* page background */
+  --color-warm-100: #f5edd6;   /* card / section bg */
+  --color-warm-200: #ead9b2;
+  --color-warm-300: #d6bc87;
+  --color-warm-400: #b8955b;
+  --color-warm-500: #9a7340;
+  --color-warm-600: #7d5c32;
+  --color-warm-700: #5e4426;
+  --color-warm-800: #3d2b1f;   /* dark brown / soil */
+  --color-warm-900: #1e1510;
+
+  /* ── SEMANTIC COLOR TOKENS ───────────────────────────── */
+  --brand:          var(--color-primary-500);
+  --brand-hover:    var(--color-primary-600);
+  --brand-light:    var(--color-primary-50);
+  --accent:         var(--color-gold-400);
+  --accent-hover:   var(--color-gold-500);
+  --nature:         var(--color-green-400);
+  --nature-light:   var(--color-green-50);
+
+  /* Backgrounds */
+  --bg-page:        var(--color-warm-50);
+  --bg-card:        #ffffff;
+  --bg-section-alt: var(--color-warm-100);
+  --bg-dark:        var(--color-warm-800);
+  --bg-nature:      var(--color-green-50);
+
+  /* Foreground / Text */
+  --fg-primary:     var(--color-warm-800);   /* #3d2b1f — main text */
+  --fg-secondary:   #6b5245;                 /* muted warm brown */
+  --fg-tertiary:    #9a8070;                 /* placeholder, disabled */
+  --fg-on-brand:    #ffffff;
+  --fg-on-dark:     #fdfaf4;
+  --fg-link:        var(--color-primary-500);
+  --fg-link-hover:  var(--color-primary-700);
+
+  /* Border */
+  --border-light:   #e8d9c4;
+  --border-medium:  #c9b299;
+  --border-dark:    var(--color-warm-400);
+
+  /* Status */
+  --status-success: var(--color-green-500);
+  --status-warn:    var(--color-gold-500);
+  --status-error:   var(--color-primary-500);
+  --status-info:    #4a7fa5;
+
+  /* ── TYPOGRAPHY ──────────────────────────────────────── */
+  --font-display: 'Inter Display', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body:    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-label:   'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Type Scale */
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+  --text-4xl:  2.25rem;    /* 36px */
+  --text-5xl:  3rem;       /* 48px */
+  --text-6xl:  3.75rem;    /* 60px */
+
+  /* Line Heights */
+  --leading-tight:   1.2;
+  --leading-snug:    1.35;
+  --leading-normal:  1.6;
+  --leading-relaxed: 1.75;
+
+  /* Letter Spacing */
+  --tracking-tight:  -0.02em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.05em;
+  --tracking-wider:   0.12em;
+
+  /* ── SEMANTIC TYPE ROLES ─────────────────────────────── */
+  --type-h1-font:    var(--font-display);
+  --type-h1-size:    var(--text-5xl);
+  --type-h1-weight:  700;
+  --type-h1-leading: var(--leading-tight);
+  --type-h1-tracking: var(--tracking-tight);
+
+  --type-h2-font:    var(--font-display);
+  --type-h2-size:    var(--text-4xl);
+  --type-h2-weight:  700;
+  --type-h2-leading: var(--leading-snug);
+
+  --type-h3-font:    var(--font-display);
+  --type-h3-size:    var(--text-2xl);
+  --type-h3-weight:  700;
+  --type-h3-leading: var(--leading-snug);
+
+  --type-h4-font:    var(--font-body);
+  --type-h4-size:    var(--text-xl);
+  --type-h4-weight:  700;
+  --type-h4-leading: var(--leading-normal);
+
+  --type-body-font:    var(--font-body);
+  --type-body-size:    var(--text-base);
+  --type-body-weight:  400;
+  --type-body-leading: var(--leading-normal);
+
+  --type-body-lg-size: var(--text-lg);
+
+  --type-label-font:    var(--font-label);
+  --type-label-size:    var(--text-sm);
+  --type-label-weight:  700;
+  --type-label-tracking: var(--tracking-wide);
+
+  --type-caption-size:   var(--text-xs);
+  --type-caption-color:  var(--fg-secondary);
+
+  /* ── SPACING SCALE ───────────────────────────────────── */
+  --space-1:  0.25rem;   /* 4px  */
+  --space-2:  0.5rem;    /* 8px  */
+  --space-3:  0.75rem;   /* 12px */
+  --space-4:  1rem;      /* 16px */
+  --space-5:  1.25rem;   /* 20px */
+  --space-6:  1.5rem;    /* 24px */
+  --space-8:  2rem;      /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
+  --space-20: 5rem;      /* 80px */
+  --space-24: 6rem;      /* 96px */
+
+  /* ── BORDER RADIUS ───────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   20px;
+  --radius-pill: 9999px;
+
+  /* ── SHADOWS ─────────────────────────────────────────── */
+  --shadow-xs: 0 1px 3px rgba(61, 43, 31, 0.08);
+  --shadow-sm: 0 2px 8px rgba(61, 43, 31, 0.10);
+  --shadow-md: 0 4px 16px rgba(61, 43, 31, 0.12);
+  --shadow-lg: 0 8px 32px rgba(61, 43, 31, 0.14);
+  --shadow-xl: 0 16px 48px rgba(61, 43, 31, 0.18);
+
+  /* ── TRANSITIONS ─────────────────────────────────────── */
+  --ease-out:     cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  --ease-in-out:  cubic-bezier(0.4, 0.0, 0.2, 1.0);
+  --duration-fast:   150ms;
+  --duration-normal: 250ms;
+  --duration-slow:   400ms;
+
+  /* ── LAYOUT ──────────────────────────────────────────── */
+  --container-sm:  640px;
+  --container-md:  768px;
+  --container-lg:  1024px;
+  --container-xl:  1280px;
+  --container-2xl: 1440px;
+}
+
+/* ── BASE RESETS & GLOBALS ───────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--fg-primary);
+  background-color: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+
+/* Semantic heading classes */
+.h1 {
+  font-family: var(--type-h1-font);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-leading);
+  letter-spacing: var(--type-h1-tracking);
+  color: var(--fg-primary);
+}
+.h2 {
+  font-family: var(--type-h2-font);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-leading);
+  color: var(--fg-primary);
+}
+.h3 {
+  font-family: var(--type-h3-font);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-leading);
+  color: var(--fg-primary);
+}
+.h4 {
+  font-family: var(--type-h4-font);
+  font-size: var(--type-h4-size);
+  font-weight: var(--type-h4-weight);
+  line-height: var(--type-h4-leading);
+  color: var(--fg-primary);
+}
+.body-lg  { font-size: var(--text-lg); line-height: var(--leading-relaxed); }
+.body     { font-size: var(--text-base); line-height: var(--leading-normal); }
+.label    { font-family: var(--font-label); font-size: var(--text-sm); font-weight: 700; letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.caption  { font-size: var(--text-xs); color: var(--fg-secondary); }
+
+@media (max-width: 1280px) {
+  .sidebar-navigation { width: 280px; }
+  .main { width: auto; flex: 1; }
+  .content-divider { width: auto; flex: 1; }
+  .content-parent { width: auto; }
+  .content13 { width: auto; }
+  .input-dropdown-parent { 
+    flex-direction: column; 
+    align-self: stretch; 
+    justify-content: center; 
+    flex: 1; 
+  }
+  .badge { background-color: #f2f4f7; }
+}
+
+/* ── Адаптив для экрана 1024px ── */
+@media (max-width: 1024px) {
+
+  /* Вся страница становится вертикальной колонкой */
+  .div {
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  /* Сайдбар превращается в горизонтальную шапку */
+  .sidebar-navigation {
+    width: 100%;
+    min-height: unset;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #eaecf0;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  /* Логотип уменьшается */
+  .icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  /* Название фермы растягивается */
+  .text-parent {
+    flex: 1;
+  }
+
+  /* Скрываем навигацию и футер сайдбара — 
+     они уходят в бургер-меню */
+  .nav,
+  .slot,
+  .footer,
+  .account {
+    display: none;
+  }
+
+  /* Показываем кнопку бургер-меню */
+  .application-nav-menu-button {
+    display: flex;
+  }
+
+  /* Основной контент растягивается на всю ширину */
+  .main-wrapper {
+    width: 100%;
+  }
+
+  .main {
+    width: auto;
+    align-self: stretch;
+  }
+
+  /* Отступы уменьшаются с 32px до 24px */
+  .page-header-wrapper {
+    padding: 0px 24px;
+  }
+
+  .container {
+    padding: 0px 24px;
+  }
+
+  /* Фиксированные ширины убираются */
+  .content-divider {
+    width: auto;
+    align-self: stretch;
+  }
+
+  .content-parent {
+    width: auto;
+    align-self: stretch;
+  }
+
+  .content13,
+  .content9 {
+    width: auto;
+    align-self: stretch;
+  }
+
+  /* Дропдауны продукта — колонкой */
+  .input-dropdown-parent {
+    flex-direction: column;
+    flex: 1;
+  }
+}

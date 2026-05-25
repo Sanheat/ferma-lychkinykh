@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--bg-page); }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
+  .token { background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 8px; text-align: center; }
+  .box { border-radius: var(--radius-md); margin: 0 auto 6px; }
+  .tname { font-family: var(--font-label); font-size: 9px; font-weight: 700; color: var(--fg-tertiary); letter-spacing: .04em; }
+  .tval  { font-family: var(--font-body); font-size: 9px; color: var(--fg-tertiary); }
+  .section-label { font-family: var(--font-label); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-tertiary); margin-bottom: 8px; }
+  .spacer-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .spacer-bar { background: var(--color-primary-200); height: 12px; border-radius: 2px; }
+  .spacer-label { font-family: var(--font-label); font-size: 9px; font-weight: 700; color: var(--fg-tertiary); min-width: 60px; }
+</style>
+</head>
+<body>
+<div class="section-label">Скругление углов</div>
+<div class="grid" style="margin-bottom:20px">
+  <div class="token"><div class="box" style="width:40px;height:40px;background:var(--color-primary-200);border-radius:4px"></div><div class="tname">--radius-sm</div><div class="tval">4px</div></div>
+  <div class="token"><div class="box" style="width:40px;height:40px;background:var(--color-primary-200);border-radius:8px"></div><div class="tname">--radius-md</div><div class="tval">8px</div></div>
+  <div class="token"><div class="box" style="width:40px;height:40px;background:var(--color-primary-200);border-radius:12px"></div><div class="tname">--radius-lg</div><div class="tval">12px</div></div>
+  <div class="token"><div class="box" style="width:40px;height:40px;background:var(--color-primary-200);border-radius:20px"></div><div class="tname">--radius-xl</div><div class="tval">20px</div></div>
+  <div class="token"><div class="box" style="width:40px;height:40px;background:var(--color-primary-200);border-radius:9999px"></div><div class="tname">--radius-pill</div><div class="tval">9999px</div></div>
+</div>
+<div class="section-label">Отступы</div>
+<div>
+  <div class="spacer-row"><div class="spacer-label">--space-1 · 4px</div><div class="spacer-bar" style="width:4px"></div></div>
+  <div class="spacer-row"><div class="spacer-label">--space-2 · 8px</div><div class="spacer-bar" style="width:8px"></div></div>
+  <div class="spacer-row"><div class="spacer-label">--space-4 · 16px</div><div class="spacer-bar" style="width:16px"></div></div>
+  <div class="spacer-row"><div class="spacer-label">--space-6 · 24px</div><div class="spacer-bar" style="width:24px"></div></div>
+  <div class="spacer-row"><div class="spacer-label">--space-8 · 32px</div><div class="spacer-bar" style="width:32px"></div></div>
+  <div class="spacer-row"><div class="spacer-label">--space-12 · 48px</div><div class="spacer-bar" style="width:48px"></div></div>
+  <div class="spacer-row"><div class="spacer-label">--space-16 · 64px</div><div class="spacer-bar" style="width:64px"></div></div>
+</div>
+</body>
+</html>
