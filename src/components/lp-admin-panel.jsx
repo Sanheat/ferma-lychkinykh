@@ -20,7 +20,8 @@ function orderVolumeKg(o) {
 }
 
 function LpAdminOrders({ onPrint }) {
-  const [orders, setOrders] = useStateAo(getOrders);
+  const [orders, setOrders] = useStateAo([]);
+  const [cps, setCps] = useStateAo([]);
   const [tab, setTab] = useStateAo('pending');
   const [search, setSearch] = useStateAo('');
   const [cpFilter, setCpFilter] = useStateAo('');
@@ -31,9 +32,15 @@ function LpAdminOrders({ onPrint }) {
   const [selected, setSelected] = useStateAo(null);
   const [editing, setEditing] = useStateAo(null);
 
-  useEffectAo(() => { const t=setInterval(()=>setOrders(getOrders()), 5000); return () => clearInterval(t); }, []);
+  useEffectAo(() => {
+    getOrders().then(setOrders);
+    getCounterparties().then(setCps);
+  }, []);
 
-  const cps = getCounterparties();
+  useEffectAo(() => {
+    const t = setInterval(() => getOrders().then(setOrders), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   const counts = useMemoAo(() => ({
     pending:  orders.filter(o => o.status==='pending').length,
@@ -65,10 +72,10 @@ function LpAdminOrders({ onPrint }) {
     });
   }, [orders, tab, cpFilter, search, volMin, volMax, dateFrom, dateTo]);
 
-  const changeStatus = (id, st) => {
-    setStatus(id, st);
+  const changeStatus = async (id, st) => {
     setOrders(p => p.map(o => o.id===id ? {...o, status:st} : o));
     setSelected(p => p?.id===id ? {...p, status:st} : p);
+    await setStatus(id, st).catch(console.error);
   };
 
   const onEditSave = updated => {
@@ -276,8 +283,7 @@ function LpPrintBlanks({ orders, onClose }) {
   const todayStr = `${String(today.getDate()).padStart(2,'0')} ${RU_MONTHS_SHORT[today.getMonth()].toUpperCase()} ${today.getFullYear()}`;
 
   const buildBlank = (order) => {
-    const cp = getCounterparties().find(c=>c.id===order.clientId);
-    const addrLabel = cp?.address || order.deliveryAddress || '';
+    const addrLabel = order.deliveryAddress || '';
     const rows = PRODUCTS.map(p => {
       const items = order.items.filter(it => it.product === p.name);
       let podl='', yashik='', shtuk='', kg='';

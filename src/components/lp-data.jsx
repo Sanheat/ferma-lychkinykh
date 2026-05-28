@@ -1,4 +1,5 @@
 import React from 'react';
+import { supabase } from '../supabase';
 
 /* ── DESIGN TOKENS ── */
 export const BR='#c94030', BRH='#a8331f', ACC='#e8a838', NAT='#7a9e7e', ARCH='#8a7a90';
@@ -52,50 +53,86 @@ export const STATUSES = {
   archive:  { label:'В архиве',    color:ARCH, bg:'#f3eff5' },
 };
 
-/* ── STORAGE ── */
-const LS_O = 'lp_orders4';
+/* ── SESSION (остаётся в localStorage) ── */
 const LS_C = 'lp_client2';
-const LS_CP = 'lp_counterparties2';
-const LS_BANNER = 'lp_banner';
-
-export const getOrders   = () => { try { return JSON.parse(localStorage.getItem(LS_O)||'[]'); } catch { return []; } };
-export const saveOrders  = o => localStorage.setItem(LS_O, JSON.stringify(o));
-export const addOrder    = o => { const a=getOrders(); a.unshift(o); saveOrders(a); };
-export const updateOrder = (id, patch) => {
-  const a = getOrders();
-  const i = a.findIndex(o=>o.id===id);
-  if (i>-1) { a[i] = { ...a[i], ...patch }; saveOrders(a); }
-};
-export const setStatus = (id, st) => updateOrder(id, { status: st });
-
-export const getClient = () => { try { return JSON.parse(localStorage.getItem(LS_C)||'null'); } catch { return null; } };
+export const getClient  = () => { try { return JSON.parse(localStorage.getItem(LS_C)||'null'); } catch { return null; } };
 export const saveClient = c => c ? localStorage.setItem(LS_C, JSON.stringify(c)) : localStorage.removeItem(LS_C);
 
-const migrateCp = c => {
-  if (c.addresses && !c.address) {
-    const first = c.addresses[0] || {};
-    return { id:c.id, name:c.name, login:c.login, password:c.password, address: first.address || '' };
-  }
-  return { id:c.id, name:c.name, login:c.login, password:c.password, address: c.address || '' };
+/* ── ORDERS ── */
+const dbToOrder = r => ({
+  id: r.id, clientId: r.counterparty_id, clientName: r.client_name,
+  deliveryAddress: r.delivery_address, deliveryType: r.delivery_type,
+  shipmentDate: r.shipment_date, createdAt: r.created_at,
+  items: r.items, comment: r.comment || '', status: r.status,
+});
+
+export const getOrders = async () => {
+  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  if (error) { console.error('getOrders:', error); return []; }
+  return (data || []).map(dbToOrder);
 };
 
-const DEFAULT_CP = [
-  { id:'cp1', name:'ИП Соколова А.В.',   login:'sokolova', password:'sok-2026',     address:'г. Москва, ул. Садовая, д. 12' },
-  { id:'cp2', name:'ООО Продукты Плюс',  login:'plus',     password:'plus-prod-26', address:'г. Москва, пр-т Мира, д. 45' },
-  { id:'cp3', name:'ИП Краснов П.И.',    login:'krasnov',  password:'kr-2026',      address:'г. Подольск, ул. Ленина, д. 3' },
-  { id:'cp4', name:'ООО Мясной Двор',    login:'dvor',     password:'dvor-26',      address:'г. Химки, Ленинградское ш., 16' },
-];
-
-export const getCounterparties = () => {
-  try {
-    const raw = JSON.parse(localStorage.getItem(LS_CP)||'null');
-    if (!raw) return DEFAULT_CP;
-    return raw.map(migrateCp);
-  } catch { return DEFAULT_CP; }
+export const addOrder = async o => {
+  const { error } = await supabase.from('orders').insert({
+    id: o.id, created_at: o.createdAt, counterparty_id: o.clientId,
+    client_name: o.clientName, delivery_address: o.deliveryAddress,
+    delivery_type: o.deliveryType, shipment_date: o.shipmentDate,
+    items: o.items, comment: o.comment || '', status: o.status || 'pending',
+  });
+  if (error) throw error;
 };
-export const saveCounterparties = list => localStorage.setItem(LS_CP, JSON.stringify(list.map(migrateCp)));
 
-const DEFAULT_BANNER = {
+export const updateOrder = async (id, patch) => {
+  const p = {};
+  if (patch.status !== undefined)          p.status           = patch.status;
+  if (patch.deliveryType !== undefined)    p.delivery_type    = patch.deliveryType;
+  if (patch.deliveryAddress !== undefined) p.delivery_address = patch.deliveryAddress;
+  if (patch.shipmentDate !== undefined)    p.shipment_date    = patch.shipmentDate;
+  if (patch.items !== undefined)           p.items            = patch.items;
+  if (patch.comment !== undefined)         p.comment          = patch.comment;
+  const { error } = await supabase.from('orders').update(p).eq('id', id);
+  if (error) throw error;
+};
+
+export const setStatus = (id, st) => updateOrder(id, { status: st });
+
+/* ── COUNTERPARTIES ── */
+export const getCounterparties = async () => {
+  const { data, error } = await supabase
+    .from('counterparties').select('id, name, login, password, address').order('created_at');
+  if (error) { console.error('getCounterparties:', error); return []; }
+  return data || [];
+};
+
+export const verifyLogin = async (login, password) => {
+  const { data } = await supabase
+    .from('counterparties').select('id, name, login, address')
+    .eq('login', login).eq('password', password).maybeSingle();
+  return data || null;
+};
+
+export const createCounterparty = async cp => {
+  const { data, error } = await supabase.from('counterparties')
+    .insert({ name: cp.name, login: cp.login, password: cp.password, address: cp.address || '' })
+    .select('id, name, login, password, address').single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateCounterparty = async cp => {
+  const { error } = await supabase.from('counterparties')
+    .update({ name: cp.name, login: cp.login, password: cp.password, address: cp.address || '' })
+    .eq('id', cp.id);
+  if (error) throw error;
+};
+
+export const deleteCounterparty = async id => {
+  const { error } = await supabase.from('counterparties').delete().eq('id', id);
+  if (error) throw error;
+};
+
+/* ── SETTINGS / BANNER ── */
+export const DEFAULT_BANNER = {
   kind: 'promo',
   title: 'Свежее мясо птицы — каждую неделю',
   subtitle: 'Принимаем заявки до 15:00 · отгрузка через 2 рабочих дня',
@@ -104,11 +141,19 @@ const DEFAULT_BANNER = {
   image: '',
 };
 
-export const getBanner = () => {
-  try { return JSON.parse(localStorage.getItem(LS_BANNER)||'null') || DEFAULT_BANNER; }
-  catch { return DEFAULT_BANNER; }
+export const getBanner = async () => {
+  const { data } = await supabase.from('settings').select('value').eq('key', 'banner').single();
+  return data?.value || DEFAULT_BANNER;
 };
-export const saveBanner = b => localStorage.setItem(LS_BANNER, JSON.stringify(b));
+
+export const saveBanner = async b => {
+  await supabase.from('settings').upsert({ key: 'banner', value: b });
+};
+
+export const verifyAdmin = async password => {
+  const { data } = await supabase.from('settings').select('value').eq('key', 'admin_password').single();
+  return data?.value === password;
+};
 
 export const genId = () =>
   Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
@@ -190,57 +235,3 @@ export function LpBadge({ status }) {
   );
 }
 
-/* ── SEED DEMO ── */
-(function seed(){
-  if (getOrders().length > 0) return;
-  const cp = getCounterparties();
-  const t = Date.now();
-  saveOrders([
-    { id:'DEMO01', clientId:cp[0].id, clientName:cp[0].name,
-      deliveryAddress:cp[0].address, deliveryType:'delivery',
-      shipmentDate: isoDate(firstShipmentFrom()),
-      createdAt: new Date(t-2*3600*1000).toISOString(),
-      items:[
-        { product:'Филе грудки ЦБ', packaging:'yasik', qty:'2',  frozen:false, frozenComment:'' },
-        { product:'Бедро ЦБ',       packaging:'paket', qty:'14', frozen:false, frozenComment:'' },
-      ],
-      comment:'Доставить до 12:00', status:'pending' },
-    { id:'DEMO02', clientId:cp[1].id, clientName:cp[1].name,
-      deliveryAddress:cp[1].address, deliveryType:'delivery',
-      shipmentDate: isoDate(firstShipmentFrom()),
-      createdAt: new Date(t-5*3600*1000).toISOString(),
-      items:[
-        { product:'Тушка ЦБ 1 сорт', packaging:'yasik', qty:'3',  frozen:true,  frozenComment:'Можно заморозку, не успели охладить' },
-        { product:'Голень ЦБ',       packaging:'lotok', qty:'20', frozen:false, frozenComment:'' },
-        { product:'Печень ЦБ',       packaging:'paket', qty:'5',  frozen:false, frozenComment:'' },
-      ],
-      comment:'', status:'accepted' },
-    { id:'DEMO03', clientId:cp[1].id, clientName:cp[1].name,
-      deliveryAddress:cp[1].address, deliveryType:'pickup',
-      shipmentDate: isoDate(addWorkDays(firstShipmentFrom(),1)),
-      createdAt: new Date(t-25*60*1000).toISOString(),
-      items:[
-        { product:'Окорочка ЦБ', packaging:'paket', qty:'20', frozen:false, frozenComment:'' },
-        { product:'Крылья ЦБ',   packaging:'paket', qty:'10', frozen:false, frozenComment:'' },
-      ],
-      comment:'Самовывоз, заберём после 11:00', status:'pending' },
-    { id:'DEMO04', clientId:cp[2].id, clientName:cp[2].name,
-      deliveryAddress:cp[2].address, deliveryType:'delivery',
-      shipmentDate: isoDate(addWorkDays(firstShipmentFrom(),-2)),
-      createdAt: new Date(t-3*86400*1000).toISOString(),
-      items:[
-        { product:'Сердце ЦБ',  packaging:'paket', qty:'4',  frozen:false, frozenComment:'' },
-        { product:'Печень ЦБ',  packaging:'paket', qty:'10', frozen:false, frozenComment:'' },
-        { product:'Желудок ЦБ', packaging:'paket', qty:'7',  frozen:false, frozenComment:'' },
-      ],
-      comment:'', status:'shipped' },
-    { id:'DEMO05', clientId:cp[3].id, clientName:cp[3].name,
-      deliveryAddress:cp[3].address, deliveryType:'delivery',
-      shipmentDate: isoDate(addWorkDays(firstShipmentFrom(),-5)),
-      createdAt: new Date(t-7*86400*1000).toISOString(),
-      items:[
-        { product:'Тушка ЦБ 1 сорт', packaging:'yasik', qty:'5', frozen:false, frozenComment:'' },
-      ],
-      comment:'', status:'archive' },
-  ]);
-})();

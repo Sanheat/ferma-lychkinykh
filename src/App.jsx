@@ -13,12 +13,17 @@ function App() {
   };
   const [mode, setMode] = useState(initialMode);
   const [adminAuthed, setAdminAuthed] = useState(false);
-  const [client, setClient] = useState(() => {
-    const saved = getClient();
-    if (!saved) return null;
-    return getCounterparties().find(c => c.id === saved.id) || null;
-  });
+  const [client, setClient] = useState(null);
+  const [appLoading, setAppLoading] = useState(true);
   const [view, setView] = useState('form');
+
+  useEffect(() => {
+    const saved = getClient();
+    if (!saved) { setAppLoading(false); return; }
+    getCounterparties()
+      .then(cps => setClient(cps.find(c => c.id === saved.id) || null))
+      .finally(() => setAppLoading(false));
+  }, []);
 
   useEffect(() => {
     const onHash = () => setMode(initialMode());
@@ -29,6 +34,12 @@ function App() {
   const goAdmin  = () => { window.location.hash = '#admin'; setMode('admin'); };
   const goClient = () => { window.location.hash = ''; setMode('client'); setAdminAuthed(false); };
   const logout   = () => { saveClient(null); setClient(null); setView('form'); };
+
+  if (appLoading) return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#fdfaf4' }}>
+      <div style={{ fontFamily:"'PT Sans',Arial,sans-serif", fontSize:14, color:'#9a8070' }}>Загрузка…</div>
+    </div>
+  );
 
   if (mode === '404') {
     return <Lp404 onBack={() => { window.history.back(); }} onHome={goClient} />;

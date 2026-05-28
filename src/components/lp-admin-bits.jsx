@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   DRK, CRD, BRD, FG2, FG3, FD, FB, FL, BR, ALT, lbl, inp,
-  STATUSES, PKG, getCounterparties, saveCounterparties, genId,
-  getBanner, saveBanner, isoDate, fmtDate, fmtLong, parseISO, updateOrder,
+  STATUSES, PKG, getCounterparties, createCounterparty, updateCounterparty, deleteCounterparty,
+  verifyAdmin, genId, getBanner, saveBanner, DEFAULT_BANNER,
+  isoDate, fmtDate, fmtLong, parseISO, updateOrder,
 } from './lp-data';
 import {
   CP_F, CP_FD, CP_GRAY_50, CP_GRAY_200, CP_GRAY_400, CP_GRAY_500, CP_GRAY_600,
@@ -18,19 +19,36 @@ const { useState: useStateA, useMemo: useMemoA } = React;
 export function LpAdminLogin({ onLogin, onBack }) {
   const [pw, setPw] = useStateA('');
   const [err, setErr] = useStateA(false);
+  const [loading, setLoading] = useStateA(false);
+
+  const onSubmit = async e => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const ok = await verifyAdmin(pw);
+      ok ? onLogin() : setErr(true);
+    } catch {
+      setErr(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:DRK, padding:24 }}>
       <div style={{ background:CRD, borderRadius:16, boxShadow:'0 16px 48px rgba(0,0,0,.25)', padding:'40px 36px', width:'100%', maxWidth:360 }}>
         <div style={{ fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.08em', textTransform:'uppercase', color:FG3, background:ALT, display:'inline-block', padding:'4px 10px', borderRadius:9999, marginBottom:18 }}>ПАНЕЛЬ МЕНЕДЖЕРА</div>
         <div style={{ fontFamily:FD, fontSize:22, fontWeight:700, color:DRK, marginBottom:6 }}>Вход для сотрудников</div>
         <div style={{ fontFamily:FB, fontSize:13, color:FG2, marginBottom:26 }}>Ферма Лычкиных · Система заявок</div>
-        <form onSubmit={e=>{ e.preventDefault(); pw==='лычкины2024' ? onLogin() : setErr(true); }}>
+        <form onSubmit={onSubmit}>
           <div style={{ marginBottom: err?4:16 }}>
             <label style={lbl}>Пароль</label>
             <input style={{...inp, borderColor: err ? BR : BRD}} type="password" value={pw} onChange={e=>{setPw(e.target.value); setErr(false);}} required/>
           </div>
           {err && <div style={{ fontFamily:FB, fontSize:12, color:BR, marginBottom:12 }}>Неверный пароль</div>}
-          <button type="submit" style={{ width:'100%', background:DRK, color:'#fdfaf4', padding:'13px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:15, border:'none', marginTop:4 }}>Войти</button>
+          <button type="submit" disabled={loading} style={{ width:'100%', background:DRK, color:'#fdfaf4', padding:'13px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:15, border:'none', marginTop:4, opacity: loading ? .7 : 1 }}>
+            {loading ? 'Проверка…' : 'Войти'}
+          </button>
         </form>
         <div style={{ marginTop:16, textAlign:'center' }}>
           <span style={{ fontFamily:FB, fontSize:12, color:FG3, cursor:'pointer', textDecoration:'underline' }} onClick={onBack}>← К форме заказа</span>
@@ -49,15 +67,13 @@ export function LpOrderEditModal({ order, onClose, onSave }) {
   const [showCal, setShowCal] = useStateA(false);
 
   if (!order) return null;
-  const cps = getCounterparties();
-  const cp = cps.find(c => c.id === draft.clientId) || cps.find(c => c.name === draft.clientName);
-  const cpAddress = cp?.address || draft.deliveryAddress || '';
+  const cpAddress = draft.deliveryAddress || '';
 
   const setItem = (i, ni) => setDraft(d => ({ ...d, items: d.items.map((it,j)=> j===i?ni:it) }));
   const addItem = () => setDraft(d => ({ ...d, items: [...d.items, { uid:genId(), product:'', packaging:'yasik', qty:'1', frozen:false, frozenComment:'' }] }));
   const removeItem = i => setDraft(d => ({ ...d, items: d.items.filter((_,j)=>j!==i) }));
 
-  const save = () => {
+  const save = async () => {
     if (draft.items.length === 0) { alert('Минимум одна позиция'); return; }
     if (draft.items.some(it=>!it.product||!it.qty)) { alert('Заполните все позиции'); return; }
     const patch = {
@@ -68,7 +84,7 @@ export function LpOrderEditModal({ order, onClose, onSave }) {
       comment: draft.comment,
       status: draft.status,
     };
-    updateOrder(order.id, patch);
+    await updateOrder(order.id, patch);
     onSave({ ...order, ...patch });
   };
 
@@ -175,24 +191,43 @@ function CpPagination({ page, total, onChange }) {
 
 /* ── COUNTERPARTIES ── */
 export function LpCounterparties() {
-  const [list, setList] = useStateA(getCounterparties);
+  const [list, setList] = useStateA([]);
   const [editing, setEditing] = useStateA(null);
   const [reveal, setReveal] = useStateA({});
   const [query, setQuery] = useStateA('');
   const [page, setPage] = useStateA(1);
   const PAGE_SIZE = 8;
+  const { useEffect: useEffectCp } = React;
 
-  const persist = next => { setList(next); saveCounterparties(next); };
+  useEffectCp(() => { getCounterparties().then(setList); }, []);
 
-  const startNew = () => setEditing({ id:'cp_'+genId(), name:'', login:'', password:'', address:'' });
+  const startNew = () => setEditing({ id: null, name:'', login:'', password:'', address:'' });
   const startEdit = c => setEditing({ ...c });
-  const save = () => {
+  const save = async () => {
     if (!editing.name.trim() || !editing.login.trim() || !editing.password.trim()) { alert('Заполните название, логин и пароль'); return; }
     const cleaned = { ...editing, address: (editing.address||'').trim() };
-    const next = list.find(c=>c.id===cleaned.id) ? list.map(c=>c.id===cleaned.id?cleaned:c) : [...list, cleaned];
-    persist(next); setEditing(null);
+    try {
+      if (!editing.id) {
+        const newCp = await createCounterparty(cleaned);
+        setList(prev => [...prev, newCp]);
+      } else {
+        await updateCounterparty(cleaned);
+        setList(prev => prev.map(c => c.id === cleaned.id ? cleaned : c));
+      }
+      setEditing(null);
+    } catch (e) {
+      alert('Ошибка: ' + (e.message || 'попробуйте снова'));
+    }
   };
-  const remove = id => { if (!confirm('Удалить контрагента?')) return; persist(list.filter(c=>c.id!==id)); };
+  const remove = async id => {
+    if (!confirm('Удалить контрагента?')) return;
+    try {
+      await deleteCounterparty(id);
+      setList(prev => prev.filter(c => c.id !== id));
+    } catch (e) {
+      alert('Ошибка удаления: ' + (e.message || 'попробуйте снова'));
+    }
+  };
   const copyPwd = c => { navigator.clipboard.writeText(c.password); };
 
   const filtered = useMemoA(()=>{
@@ -317,7 +352,7 @@ export function LpCounterparties() {
 }
 
 function CpEditModal({ editing, setEditing, list, onSave }) {
-  const isNew = !list.find(c=>c.id===editing.id);
+  const isNew = !editing.id;
   const fieldLbl = { display:'block', fontFamily:CP_F, fontWeight:500, fontSize:14, lineHeight:'20px', color:CP_GRAY_700, marginBottom:6 };
 
   return (
@@ -380,9 +415,11 @@ function CpEditModal({ editing, setEditing, list, onSave }) {
 
 /* ── BANNER EDITOR ── */
 export function LpBannerEditor() {
-  const [b, setB] = useStateA(getBanner);
+  const [b, setB] = useStateA(DEFAULT_BANNER);
   const fileRef = React.useRef();
-  const set = (k, v) => { const next = { ...b, [k]: v }; setB(next); saveBanner(next); };
+  const { useEffect: useEffectBn } = React;
+  useEffectBn(() => { getBanner().then(setB); }, []);
+  const set = async (k, v) => { const next = { ...b, [k]: v }; setB(next); await saveBanner(next).catch(console.error); };
   const onFile = e => {
     const f = e.target.files?.[0]; if (!f) return;
     const reader = new FileReader();

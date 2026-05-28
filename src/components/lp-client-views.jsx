@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  getCounterparties, saveClient, getBanner, genId, addOrder, getOrders,
+  verifyLogin, saveClient, getBanner, DEFAULT_BANNER, genId, addOrder, getOrders,
   isoDate, firstShipmentFrom, parseISO, fmtLong, fmtShort, fmtDate, PKG, PRODUCTS,
 } from './lp-data';
 import {
@@ -21,14 +21,22 @@ export function LpClientLogin({ onLogin, onAdmin }) {
   const [login, setLogin] = useStateCl('');
   const [pw, setPw] = useStateCl('');
   const [err, setErr] = useStateCl('');
+  const [loading, setLoading] = useStateCl(false);
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault();
-    const cps = getCounterparties();
-    const found = cps.find(c => c.login === login.trim() && c.password === pw);
-    if (!found) { setErr('Неверный логин или пароль'); return; }
-    saveClient({ id: found.id });
-    onLogin(found);
+    setLoading(true);
+    setErr('');
+    try {
+      const found = await verifyLogin(login.trim(), pw);
+      if (!found) { setErr('Неверный логин или пароль'); return; }
+      saveClient({ id: found.id });
+      onLogin(found);
+    } catch {
+      setErr('Ошибка соединения, попробуйте снова');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle = {
@@ -130,15 +138,16 @@ export function LpClientLogin({ onLogin, onAdmin }) {
             <button
               type="submit"
               className="cp-login-submit"
+              disabled={loading}
               style={{
                 width:'100%', height:44, padding:'10px 16px',
-                background:'#B68B4A', border:'1px solid #B68B4A', borderRadius:8,
+                background: loading ? '#d4a870' : '#B68B4A', border:'1px solid #B68B4A', borderRadius:8,
                 fontFamily:CP_F, fontWeight:600, fontSize:14, lineHeight:'20px',
-                color:'#fff', cursor:'pointer',
+                color:'#fff', cursor: loading ? 'not-allowed' : 'pointer',
                 boxShadow:CP_SHADOW_XS,
                 transition:'background .15s ease',
               }}>
-              Войти
+              {loading ? 'Вход…' : 'Войти'}
             </button>
           </form>
 
@@ -215,7 +224,9 @@ export function LpClientBanner({ banner }) {
 
 /* ─────────────  ORDER FORM  ───────────── */
 export function LpOrderForm({ counterparty, onHistory, onLogout }) {
-  const banner = getBanner();
+  const [banner, setBanner] = useStateCl(DEFAULT_BANNER);
+  const { useEffect: useEffectCl } = React;
+  useEffectCl(() => { getBanner().then(setBanner); }, []);
 
   const mkItem = () => ({ uid:genId(), product:'', packaging:'yasik', qty:'1', frozen:false, frozenComment:'' });
   const [shipDate, setShipDate] = useStateCl(() => isoDate(firstShipmentFrom()));
@@ -224,41 +235,52 @@ export function LpOrderForm({ counterparty, onHistory, onLogout }) {
   const [comment, setComment] = useStateCl('');
   const [showCal, setShowCal] = useStateCl(false);
   const [done, setDone] = useStateCl(null);
+  const [submitting, setSubmitting] = useStateCl(false);
+  const [myOrdersCount, setMyOrdersCount] = useStateCl(0);
+
+  useEffectCl(() => {
+    getOrders().then(all =>
+      setMyOrdersCount(all.filter(o => o.clientId === counterparty.id || o.clientName === counterparty.name).length)
+    );
+  }, [counterparty, done]);
 
   const minDate = firstShipmentFrom();
   const addr = counterparty.address || '';
   const handleChange = (idx, ni) => setItems(p=>p.map((it,i)=>i===idx?ni:it));
   const handleRemove = idx => setItems(p=>p.filter((_,i)=>i!==idx));
 
-  const submit = () => {
+  const submit = async () => {
     if (!deliveryType) { alert('Выберите способ получения'); return; }
     if (items.some(it => !it.product || !it.qty || Number(it.qty) <= 0)) {
       alert('Заполните все позиции');
       return;
     }
-    const id = genId();
-    addOrder({
-      id, clientId: counterparty.id, clientName: counterparty.name,
-      deliveryAddress: addr,
-      deliveryType, shipmentDate: shipDate,
-      createdAt: new Date().toISOString(),
-      items: items.map(it => ({
-        product: it.product, packaging: it.packaging, qty: it.qty,
-        frozen: !!it.frozen, frozenComment: it.frozenComment || '',
-      })),
-      comment, status: 'pending',
-    });
-    setDone({ id, address: addr, shipmentDate: shipDate });
+    setSubmitting(true);
+    try {
+      const id = genId();
+      await addOrder({
+        id, clientId: counterparty.id, clientName: counterparty.name,
+        deliveryAddress: addr,
+        deliveryType, shipmentDate: shipDate,
+        createdAt: new Date().toISOString(),
+        items: items.map(it => ({
+          product: it.product, packaging: it.packaging, qty: it.qty,
+          frozen: !!it.frozen, frozenComment: it.frozenComment || '',
+        })),
+        comment, status: 'pending',
+      });
+      setDone({ id, address: addr, shipmentDate: shipDate });
+    } catch {
+      alert('Ошибка при отправке заявки. Попробуйте снова.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const reset = () => {
     setItems([mkItem()]); setComment(''); setDone(null);
     setDeliveryType(null); setShipDate(isoDate(firstShipmentFrom()));
   };
-
-  const myOrdersCount = useMemoCl(() =>
-    getOrders().filter(o => o.clientId === counterparty.id || o.clientName === counterparty.name).length
-  , [counterparty, done]);
 
   const filledCount = items.filter(it => it.product && Number(it.qty) > 0).length;
   const deliveryLabel = deliveryType === 'pickup' ? 'Самовывоз' : deliveryType === 'delivery' ? 'Доставка' : 'Не выбрано';
@@ -380,14 +402,14 @@ export function LpOrderForm({ counterparty, onHistory, onLogout }) {
               boxShadow:CP_SHADOW_CARD, overflow:'hidden',
             }}>
               <div style={{ padding:20, display:'flex', flexDirection:'column', alignItems:'center', gap:24, background:'#fff', borderRadius:8 }}>
-                <button type="button" onClick={submit}
+                <button type="button" onClick={submit} disabled={submitting}
                   style={{
                     alignSelf:'stretch', padding:'10px 16px',
                     background:CP_CREAM, border:`1px solid ${CP_CREAM}`, borderRadius:8,
                     fontFamily:CP_F, fontWeight:600, fontSize:14, lineHeight:'20px',
-                    color:CP_BEIGE_300, cursor:'pointer', textAlign:'center',
+                    color: submitting ? '#c4a06a' : CP_BEIGE_300, cursor: submitting ? 'not-allowed' : 'pointer', textAlign:'center',
                   }}>
-                  Оформить заявку
+                  {submitting ? 'Отправка…' : 'Оформить заявку'}
                 </button>
 
                 <div style={{ alignSelf:'stretch', display:'flex', flexDirection:'column', gap:16 }}>
@@ -626,10 +648,16 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
 
 /* ─────────────  ORDER HISTORY  ───────────── */
 export function LpOrderHistory({ counterparty, onBack, onLogout }) {
-  const allOrders = useMemoCl(()=> getOrders().filter(o => o.clientId === counterparty.id || o.clientName === counterparty.name), [counterparty]);
+  const { useEffect: useEffectCl2 } = React;
+  const [allOrders, setAllOrders] = useStateCl([]);
+  useEffectCl2(() => {
+    getOrders().then(all =>
+      setAllOrders(all.filter(o => o.clientId === counterparty.id || o.clientName === counterparty.name))
+    );
+  }, [counterparty.id]);
   const [query, setQuery] = useStateCl('');
   const [productFilter, setProductFilter] = useStateCl('');
-  const [expanded, setExpanded] = useStateCl(new Set([allOrders[1]?.id].filter(Boolean)));
+  const [expanded, setExpanded] = useStateCl(new Set());
 
   const productOptions = useMemoCl(()=>{
     const s = new Set();
