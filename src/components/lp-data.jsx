@@ -60,7 +60,7 @@ export const saveClient = c => c ? localStorage.setItem(LS_C, JSON.stringify(c))
 
 /* ── ORDERS ── */
 const dbToOrder = r => ({
-  id: r.id, clientId: r.counterparty_id, clientName: r.client_name,
+  id: String(r.id), clientId: r.counterparty_id, clientName: r.client_name,
   deliveryAddress: r.delivery_address, deliveryType: r.delivery_type,
   shipmentDate: r.shipment_date, createdAt: r.created_at,
   items: r.items, comment: r.comment || '', status: r.status,
@@ -73,13 +73,14 @@ export const getOrders = async () => {
 };
 
 export const addOrder = async o => {
-  const { error } = await supabase.from('orders').insert({
-    id: o.id, created_at: o.createdAt, counterparty_id: o.clientId,
+  const { data, error } = await supabase.from('orders').insert({
+    created_at: o.createdAt, counterparty_id: o.clientId,
     client_name: o.clientName, delivery_address: o.deliveryAddress,
     delivery_type: o.deliveryType, shipment_date: o.shipmentDate,
     items: o.items, comment: o.comment || '', status: o.status || 'pending',
-  });
+  }).select('id').single();
   if (error) throw error;
+  return String(data.id);
 };
 
 export const updateOrder = async (id, patch) => {

@@ -257,9 +257,8 @@ export function LpOrderForm({ counterparty, onHistory, onLogout }) {
     }
     setSubmitting(true);
     try {
-      const id = genId();
-      await addOrder({
-        id, clientId: counterparty.id, clientName: counterparty.name,
+      const id = await addOrder({
+        clientId: counterparty.id, clientName: counterparty.name,
         deliveryAddress: addr,
         deliveryType, shipmentDate: shipDate,
         createdAt: new Date().toISOString(),
