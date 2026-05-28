@@ -15,7 +15,7 @@ create table counterparties (
 
 -- ── Заявки ─────────────────────────────────────────
 create table orders (
-  id               bigint      generated always as identity (start with 1001) primary key,
+  id               bigint      primary key,
   created_at       timestamptz not null default now(),
   counterparty_id  uuid        references counterparties(id) on delete set null,
   client_name      text        not null default '',

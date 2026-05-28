@@ -73,14 +73,15 @@ export const getOrders = async () => {
 };
 
 export const addOrder = async o => {
-  const { data, error } = await supabase.from('orders').insert({
-    created_at: o.createdAt, counterparty_id: o.clientId,
+  const id = Math.floor(100000 + Math.random() * 900000);
+  const { error } = await supabase.from('orders').insert({
+    id, created_at: o.createdAt, counterparty_id: o.clientId,
     client_name: o.clientName, delivery_address: o.deliveryAddress,
     delivery_type: o.deliveryType, shipment_date: o.shipmentDate,
     items: o.items, comment: o.comment || '', status: o.status || 'pending',
-  }).select('id').single();
+  });
   if (error) throw error;
-  return String(data.id);
+  return String(id);
 };
 
 export const updateOrder = async (id, patch) => {
