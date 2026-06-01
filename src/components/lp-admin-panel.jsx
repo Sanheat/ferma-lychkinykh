@@ -1,88 +1,132 @@
 import React from 'react';
 import * as XLSX from 'xlsx';
 import {
-  PKG, PRODUCTS, STATUSES, RU_MONTHS_SHORT, getOrders, getCounterparties, setStatus,
-  fmtDate, fmtShort, fmtLong, parseISO, isoDate,
-  DRK, BR, BG, BRD, FG2, FG3, FD, FB, FL, CRD, ALT, ACC, NAT, ARCH, lbl, inp,
-  LpBadge, LpLogo,
+  CP_F, CP_SHADOW_SM,
+  CpIco, CpStatusBadge,
+} from './lp-ui';
+import {
+  getOrders, getCounterparties, setStatus,
+  fmtDate, fmtShort, fmtLong, parseISO,
+  PKG, STATUSES, PRODUCTS, RU_MONTHS_SHORT,
+  DRK, BR, FD, FL,
 } from './lp-data';
-import { LpOrderEditModal, LpCounterparties, LpBannerEditor } from './lp-admin-bits';
+import { LpOrderEditModal, LpCounterparties } from './lp-admin-bits';
+import { LpBannerEditor } from './lp-banner-editor';
+import { LpManagerLayout } from './lp-manager-shell';
 
 const { useState: useStateAo, useEffect: useEffectAo, useMemo: useMemoAo } = React;
 
+/** Расчётный объём заказа в кг: ящик≈14кг, лоток≈0.9кг, пакет = qty кг. */
 function orderVolumeKg(o) {
   return o.items.reduce((sum, it) => {
     const q = parseFloat(it.qty) || 0;
-    if (it.packaging === 'yasik' || PKG[it.packaging]?.label?.startsWith('Ящик')) return sum + q*14;
-    if (it.packaging === 'lotok' || PKG[it.packaging]?.label === 'Лоток')          return sum + q*0.9;
+    if (it.packaging === 'yasik' || PKG[it.packaging]?.label?.startsWith('Ящик')) return sum + q * 14;
+    if (it.packaging === 'lotok' || PKG[it.packaging]?.label === 'Лоток')          return sum + q * 0.9;
     return sum + q;
   }, 0);
 }
 
+/* ── Дизайн-токены страницы «Все заявки» (Figma — не интерпретировать) ── */
+const MO_BG_HEAD      = '#F9F8F8';
+const MO_BORDER_NAV   = '#EAECF0';
+const MO_BORDER_ROW   = '#DFDDDD';
+const MO_BORDER_INPUT = '#C6C3C3';
+const MO_TEXT_PRIMARY = '#191414';
+const MO_TEXT_HEAD    = '#676262';
+const MO_TEXT_TAB     = '#7E7979';
+const MO_TEXT_VALUE   = '#514C4B';
+const MO_TEXT_VOLUME  = '#101828';
+const MO_BRAND_ACTIVE = '#986338';
+const MO_CREAM_100    = '#F5F0DF';
+const MO_CREAM_50     = '#FBF9F1';
+const MO_NUM_TXT      = '#3C3636';
+const MO_PAGI_MUTED   = '#676262';
+const MO_PAGI_DISABLE = '#ADAAAA';
+const MO_SHADOW_XS    = '0px 1px 2px rgba(16, 24, 40, 0.05)';
+
+const moDate = iso => new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const moTime = iso => new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+const MoIco = {
+  printer: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" rx="1" />
+    </svg>
+  ),
+  arrowDown: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
+  ),
+};
+
 function LpAdminOrders({ onPrint }) {
   const [orders, setOrders] = useStateAo([]);
-  const [cps, setCps] = useStateAo([]);
   const [tab, setTab] = useStateAo('pending');
   const [search, setSearch] = useStateAo('');
-  const [cpFilter, setCpFilter] = useStateAo('');
-  const [volMin, setVolMin] = useStateAo('');
-  const [volMax, setVolMax] = useStateAo('');
-  const [dateFrom, setDateFrom] = useStateAo('');
-  const [dateTo, setDateTo] = useStateAo('');
+  const [page, setPage] = useStateAo(1);
   const [selected, setSelected] = useStateAo(null);
   const [editing, setEditing] = useStateAo(null);
+  const [allChecked, setAllChecked] = useStateAo(false);
+  const [checked, setChecked] = useStateAo({});
 
   useEffectAo(() => {
-    getOrders().then(setOrders);
-    getCounterparties().then(setCps);
+    let alive = true;
+    const load = () => getOrders().then(d => { if (alive) setOrders(d); }).catch(console.error);
+    load();
+    const t = setInterval(load, 5000);
+    return () => { alive = false; clearInterval(t); };
   }, []);
 
-  useEffectAo(() => {
-    const t = setInterval(() => getOrders().then(setOrders), 5000);
-    return () => clearInterval(t);
-  }, []);
+  const inTab = (o, t) => t === 'cancelled' ? (o.status === 'cancelled' || o.status === 'archive') : o.status === t;
 
   const counts = useMemoAo(() => ({
-    pending:  orders.filter(o => o.status==='pending').length,
-    accepted: orders.filter(o => o.status==='accepted').length,
-    shipped:  orders.filter(o => o.status==='shipped').length,
-    archive:  orders.filter(o => o.status==='archive').length,
+    pending:   orders.filter(o => inTab(o, 'pending')).length,
+    accepted:  orders.filter(o => inTab(o, 'accepted')).length,
+    shipped:   orders.filter(o => inTab(o, 'shipped')).length,
+    cancelled: orders.filter(o => inTab(o, 'cancelled')).length,
   }), [orders]);
 
   const filtered = useMemoAo(() => {
+    const q = search.trim().toLowerCase();
     return orders.filter(o => {
-      if (tab === 'pending'  && o.status!=='pending')  return false;
-      if (tab === 'accepted' && o.status!=='accepted') return false;
-      if (tab === 'shipped'  && o.status!=='shipped')  return false;
-      if (tab === 'archive'  && o.status!=='archive')  return false;
-      if (cpFilter && o.clientId !== cpFilter && o.clientName !== cpFilter) return false;
-      if (search) {
-        const q = search.toLowerCase();
+      if (!inTab(o, tab)) return false;
+      if (q) {
         const hit = o.clientName.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) ||
-                    o.deliveryAddress?.toLowerCase().includes(q) ||
-                    o.items.some(it=>it.product.toLowerCase().includes(q));
+          (o.deliveryAddress || '').toLowerCase().includes(q) ||
+          o.items.some(it => it.product.toLowerCase().includes(q));
         if (!hit) return false;
       }
-      const v = orderVolumeKg(o);
-      if (volMin && v < parseFloat(volMin)) return false;
-      if (volMax && v > parseFloat(volMax)) return false;
-      if (dateFrom && o.shipmentDate && o.shipmentDate < dateFrom) return false;
-      if (dateTo   && o.shipmentDate && o.shipmentDate > dateTo)   return false;
       return true;
     });
-  }, [orders, tab, cpFilter, search, volMin, volMax, dateFrom, dateTo]);
+  }, [orders, tab, search]);
 
-  const changeStatus = async (id, st) => {
-    setOrders(p => p.map(o => o.id===id ? {...o, status:st} : o));
-    setSelected(p => p?.id===id ? {...p, status:st} : p);
-    await setStatus(id, st).catch(console.error);
+  const PAGE_SIZE = 8;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const pageNumbers = useMemoAo(() => {
+    if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
+    if (safePage <= 4) return [1, 2, 3, 4, 5, '...', pageCount];
+    if (safePage >= pageCount - 3) return [1, '...', pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+    return [1, '...', safePage - 1, safePage, safePage + 1, '...', pageCount];
+  }, [pageCount, safePage]);
+
+  const changeStatus = (id, st) => {
+    setOrders(p => p.map(o => o.id === id ? { ...o, status: st } : o));
+    setSelected(p => p?.id === id ? { ...p, status: st } : p);
+    setStatus(id, st).catch(console.error);
   };
-
   const onEditSave = updated => {
-    setOrders(p => p.map(o => o.id===updated.id ? updated : o));
-    setEditing(null);
-    setSelected(updated);
+    setOrders(p => p.map(o => o.id === updated.id ? updated : o));
+    setEditing(null); setSelected(updated);
   };
+
+  const toggleAll = () => {
+    const next = !allChecked; setAllChecked(next);
+    const map = {}; if (next) pageRows.forEach(o => map[o.id] = true);
+    setChecked(map);
+  };
+  const toggleRow = (id, e) => { e.stopPropagation(); setChecked(p => ({ ...p, [id]: !p[id] })); };
 
   const exportXLSX = () => {
     const rows = [];
@@ -90,194 +134,541 @@ function LpAdminOrders({ onPrint }) {
       'Номер': o.id,
       'Дата создания': fmtDate(o.createdAt),
       'Дата отгрузки': o.shipmentDate ? fmtShort(parseISO(o.shipmentDate)) : '',
-      'Способ': o.deliveryType==='pickup' ? 'Самовывоз' : 'Доставка',
+      'Способ': o.deliveryType === 'pickup' ? 'Самовывоз' : 'Доставка',
       'Контрагент': o.clientName,
       'Адрес': o.deliveryAddress,
       'Продукт': it.product,
-      'Заморозка': it.frozen ? 'да' : '',
       'Тара': PKG[it.packaging]?.label || it.packaging,
       'Кол-во': it.qty,
-      'Ед.': PKG[it.packaging]?.unit || '',
       'Объём, кг (расч.)': orderVolumeKg(o).toFixed(1),
-      'Комментарий': o.comment || '',
       'Статус': STATUSES[o.status]?.label || o.status,
     })));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Заявки');
-    XLSX.writeFile(wb, `Заявки_${new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')}.xlsx`);
+    XLSX.writeFile(wb, `Заявки_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.xlsx`);
   };
 
-  const thS = { fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.07em', textTransform:'uppercase', color:FG3, padding:'10px 14px', textAlign:'left', background:ALT, borderBottom:`1px solid ${BRD}` };
-  const tdS = { fontFamily:FB, fontSize:13, color:DRK, padding:'11px 14px', borderBottom:`1px solid ${BRD}` };
-  const tabBtn = a => ({ fontFamily:FL, fontWeight:700, fontSize:12, letterSpacing:'.04em', padding:'8px 16px', borderRadius:9999, border:`1.5px solid ${a?BR:BRD}`, background:a?BR:'transparent', color:a?'white':DRK, cursor:'pointer' });
+  const thBase = {
+    height: 44, background: MO_BG_HEAD, borderBottom: `1px solid ${MO_BORDER_NAV}`,
+    padding: '12px 24px', textAlign: 'left', boxSizing: 'border-box',
+    fontFamily: CP_F, fontWeight: 500, fontSize: 12, lineHeight: '18px', color: MO_TEXT_HEAD, whiteSpace: 'nowrap',
+  };
+  const tdBase = {
+    height: 72, borderBottom: `1px solid ${MO_BORDER_ROW}`,
+    padding: '16px 24px', boxSizing: 'border-box', verticalAlign: 'middle',
+    fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_PRIMARY,
+  };
+  const supText = { fontFamily: CP_F, fontWeight: 400, fontSize: 14, lineHeight: '20px', color: MO_TEXT_HEAD };
+
+  const Checkbox = ({ on, onClick }) => (
+    <span onClick={onClick} style={{
+      width: 20, height: 20, borderRadius: 6, flexShrink: 0, cursor: 'pointer',
+      border: `1px solid ${on ? MO_BRAND_ACTIVE : '#ADAAAA'}`,
+      background: on ? MO_CREAM_50 : '#fff',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: MO_BRAND_ACTIVE,
+    }}>
+      {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+    </span>
+  );
+
+  const TABS = [
+    ['pending', 'В обработке', counts.pending],
+    ['accepted', 'Принятые', counts.accepted],
+    ['shipped', 'Отгруженные', counts.shipped],
+    ['cancelled', 'Отменённые', counts.cancelled],
+  ];
 
   return (
-    <div style={{ maxWidth:1300, margin:'0 auto', padding:'20px 24px' }}>
-      {/* Filters bar */}
-      <div style={{ background:CRD, borderRadius:12, padding:'14px 16px', boxShadow:`0 2px 8px rgba(61,43,31,.07)`, marginBottom:14 }}>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:10 }}>
-          <button style={tabBtn(tab==='pending')}  onClick={()=>setTab('pending')}>В обработке ({counts.pending})</button>
-          <button style={tabBtn(tab==='accepted')} onClick={()=>setTab('accepted')}>Принятые ({counts.accepted})</button>
-          <button style={tabBtn(tab==='shipped')}  onClick={()=>setTab('shipped')}>Отгруженные ({counts.shipped})</button>
-          <button style={tabBtn(tab==='archive')}  onClick={()=>setTab('archive')}>В архиве ({counts.archive})</button>
-          <div style={{ flex:1 }}/>
-          <button onClick={()=>onPrint(filtered)} style={{ background:DRK, color:'white', padding:'8px 16px', borderRadius:7, fontFamily:FL, fontWeight:700, fontSize:12, letterSpacing:'.04em', border:'none', whiteSpace:'nowrap' }}>🖨 Бланки в производство</button>
-          <button onClick={exportXLSX} style={{ background:'#1D6F42', color:'white', padding:'8px 16px', borderRadius:7, fontFamily:FL, fontWeight:700, fontSize:12, letterSpacing:'.04em', border:'none', whiteSpace:'nowrap' }}>↓ Excel</button>
+    <div data-screen-label="Главная — Все заявки" className="mo-orders" style={{
+      width: '100%',
+      padding: '32px 0 48px', display: 'flex', flexDirection: 'column', gap: 32,
+      background: '#fff',
+    }}>
+      <div className="mo-pad" style={{ display: 'flex', flexDirection: 'column', padding: '0 32px', gap: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <h1 style={{ fontFamily: CP_F, fontWeight: 600, fontSize: 30, lineHeight: '38px', color: MO_TEXT_VOLUME, letterSpacing: '-0.01em' }}>
+            Все заявки
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <button type="button" onClick={exportXLSX} style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '10px 16px', borderRadius: 8, background: '#fff', border: `1px solid ${MO_BORDER_INPUT}`,
+              boxShadow: MO_SHADOW_XS, cursor: 'pointer', whiteSpace: 'nowrap',
+              fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE,
+            }}>
+              <span style={{ display: 'flex', color: MO_TEXT_VALUE }}>{MoIco.printer}</span>Excel
+            </button>
+            <button type="button" onClick={() => onPrint(filtered)} style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '10px 16px', borderRadius: 8, background: MO_CREAM_100, border: `1px solid ${MO_CREAM_50}`,
+              cursor: 'pointer', whiteSpace: 'nowrap',
+              fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_BRAND_ACTIVE,
+            }}>
+              <span style={{ display: 'flex', color: MO_BRAND_ACTIVE }}>{MoIco.printer}</span>Бланки в производство
+            </button>
+          </div>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'minmax(200px, 1.4fr) minmax(180px, 1.2fr) minmax(180px, 1fr) minmax(220px, 1.2fr)', gap:10, alignItems:'end' }}>
-          <div>
-            <div style={lbl}>Поиск</div>
-            <input style={{...inp, padding:'8px 12px', fontSize:13}} placeholder="🔍 Номер, адрес, продукт…" value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div className="mo-tabs" style={{ borderBottom: `1px solid ${MO_BORDER_NAV}`, display: 'flex', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+            {TABS.map(([key, label, count]) => {
+              const on = tab === key;
+              return (
+                <button key={key} type="button" onClick={() => { setTab(key); setPage(1); }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '1px 4px 11px', background: 'none', border: 'none', cursor: 'pointer',
+                    borderBottom: on ? `2px solid ${MO_BRAND_ACTIVE}` : '2px solid transparent',
+                    fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px',
+                    color: on ? MO_BRAND_ACTIVE : MO_TEXT_TAB, whiteSpace: 'nowrap', flexShrink: 0,
+                  }}>
+                  {label}
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '2px 8px', borderRadius: 16, background: MO_BG_HEAD,
+                    fontFamily: CP_F, fontWeight: 500, fontSize: 12, lineHeight: '18px', color: MO_TEXT_VALUE,
+                  }}>{count}</span>
+                </button>
+              );
+            })}
           </div>
-          <div>
-            <div style={lbl}>Контрагент</div>
-            <select style={{...inp, padding:'8px 10px', fontSize:13}} value={cpFilter} onChange={e=>setCpFilter(e.target.value)}>
-              <option value="">Все контрагенты</option>
-              {cps.map(c=> <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <div style={lbl}>Объём, кг</div>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <input style={{...inp, padding:'8px 10px', fontSize:13, width:'100%'}} placeholder="от" type="number" value={volMin} onChange={e=>setVolMin(e.target.value)}/>
-              <span style={{ color:FG3 }}>–</span>
-              <input style={{...inp, padding:'8px 10px', fontSize:13, width:'100%'}} placeholder="до" type="number" value={volMax} onChange={e=>setVolMax(e.target.value)}/>
-            </div>
-          </div>
-          <div>
-            <div style={lbl}>Дата отгрузки</div>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <input type="date" style={{...inp, padding:'8px 10px', fontSize:13, width:'100%'}} value={dateFrom} onChange={e=>setDateFrom(e.target.value)} title="С даты"/>
-              <span style={{ color:FG3 }}>–</span>
-              <input type="date" style={{...inp, padding:'8px 10px', fontSize:13, width:'100%'}} value={dateTo} onChange={e=>setDateTo(e.target.value)} title="По дату"/>
-              {(dateFrom || dateTo) && (
-                <button onClick={()=>{ setDateFrom(''); setDateTo(''); }} title="Сбросить даты"
-                  style={{ background:'none', border:'none', color:FG3, fontSize:18, lineHeight:1, padding:'0 4px', cursor:'pointer' }}>×</button>
-              )}
+        </div>
+      </div>
+
+      <div className="mo-pad" style={{ padding: '0 32px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ width: 343, maxWidth: '100%' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#fff', border: `1px solid ${MO_BORDER_INPUT}`, borderRadius: 8,
+              padding: '10px 14px', boxShadow: MO_SHADOW_XS,
+            }}>
+              <span style={{ color: MO_TEXT_TAB, display: 'flex' }}>{CpIco.search}</span>
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск"
+                style={{
+                  flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+                  fontFamily: CP_F, fontSize: 16, lineHeight: '24px', color: MO_TEXT_PRIMARY,
+                }} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:18 }}>
-        {[
-          ['В обработке', orders.filter(o=>o.status==='pending').length, ACC],
-          ['Принятые',     orders.filter(o=>o.status==='accepted').length, NAT],
-          ['Отгруженные',  counts.shipped, '#4a7da8'],
-          ['В архиве',     counts.archive, ARCH],
-        ].map(([l,n,c])=>(
-          <div key={l} style={{ background:CRD, borderRadius:10, padding:'12px 16px', boxShadow:`0 2px 8px rgba(61,43,31,.07)`, borderLeft:`3px solid ${c}` }}>
-            <div style={{ fontFamily:FD, fontSize:24, fontWeight:700, color:DRK }}>{n}</div>
-            <div style={{ fontFamily:FB, fontSize:12, color:FG3 }}>{l}</div>
-          </div>
-        ))}
-      </div>
-
-      {filtered.length === 0
-        ? <div style={{ textAlign:'center', padding:'60px 0', fontFamily:FB, fontSize:15, color:FG3 }}>Заявок не найдено</div>
-        : <div style={{ background:CRD, borderRadius:12, boxShadow:`0 2px 8px rgba(61,43,31,.07)`, overflow:'hidden' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr>
-                <th style={thS}>№</th>
-                <th style={thS}>Создан</th>
-                <th style={thS}>Отгрузка</th>
-                <th style={thS}>Контрагент</th>
-                <th style={thS}>Адрес / способ</th>
-                <th style={thS}>Позиции</th>
-                <th style={thS}>Объём</th>
-                <th style={thS}>Статус</th>
-              </tr></thead>
-              <tbody>{filtered.map(o => {
-                const isNew = Date.now()-new Date(o.createdAt).getTime()<10*60*1000 && o.status==='pending';
-                return (
-                  <tr key={o.id} style={{ cursor:'pointer' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='#fef9f8'}
-                    onMouseLeave={e=>e.currentTarget.style.background=CRD}
-                    onClick={()=>setSelected(o)}>
-                    <td style={tdS}>{isNew && <span style={{ display:'inline-block', width:7, height:7, borderRadius:'50%', background:BR, marginRight:5 }}/>}<span style={{ fontFamily:FL, fontWeight:700, fontSize:11, color:FG3 }}>{o.id}</span></td>
-                    <td style={{...tdS, fontSize:11, color:FG2}}>{fmtDate(o.createdAt)}</td>
-                    <td style={{...tdS, fontWeight:700}}>{o.shipmentDate ? fmtShort(parseISO(o.shipmentDate)) : '—'}</td>
-                    <td style={{...tdS, fontWeight:700}}>{o.clientName}</td>
-                    <td style={{...tdS, fontSize:12, color:FG2}}>
-                      <div>{o.deliveryAddress}</div>
-                      <div style={{ fontFamily:FL, fontSize:10, color:FG3, textTransform:'uppercase', letterSpacing:'.05em', marginTop:2 }}>
-                        {o.deliveryType === 'pickup' ? 'самовывоз' : 'доставка'}
-                      </div>
-                    </td>
-                    <td style={{...tdS, color:FG2, fontSize:12}}>{o.items.length} поз. · {o.items.map(i=>i.product).join(', ').slice(0,40)}{o.items.map(i=>i.product).join(', ').length>40?'…':''}</td>
-                    <td style={tdS}><span style={{ fontFamily:FD, fontWeight:700 }}>{Math.round(orderVolumeKg(o))}</span> <span style={{ fontFamily:FB, fontSize:11, color:FG3 }}>кг</span></td>
-                    <td style={tdS}><LpBadge status={o.status}/></td>
-                  </tr>
-                );
-              })}</tbody>
+      <div className="mo-pad" style={{ padding: '0 32px' }}>
+        <div style={{
+          background: '#fff', borderRadius: 12, border: `1px solid ${MO_BORDER_NAV}`,
+          boxShadow: CP_SHADOW_SM, overflow: 'hidden', paddingBottom: 20,
+        }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thBase, width: 110 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                      <Checkbox on={allChecked} onClick={toggleAll} />№
+                    </span>
+                  </th>
+                  <th style={thBase}>Контрагент</th>
+                  <th style={thBase}>Создан</th>
+                  <th style={thBase}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Отгрузка <span style={{ display: 'flex', color: MO_TEXT_HEAD }}>{MoIco.arrowDown}</span>
+                    </span>
+                  </th>
+                  <th style={thBase}>Статус</th>
+                  <th style={thBase}>Адрес/способ</th>
+                  <th style={thBase}>Позиции</th>
+                  <th style={thBase}>Объём</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.length === 0 && (
+                  <tr><td colSpan={8} style={{ ...tdBase, textAlign: 'center', color: MO_TEXT_TAB, height: 'auto', padding: '48px 24px' }}>
+                    Заявок не найдено
+                  </td></tr>
+                )}
+                {pageRows.map(o => {
+                  const products = o.items.map(i => i.product);
+                  const shown = products.slice(0, 3);
+                  const extra = products.length - shown.length;
+                  const method = o.deliveryType === 'pickup' ? 'Самовывоз' : 'Доставка';
+                  return (
+                    <tr key={o.id} style={{ cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = MO_BG_HEAD}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                      onClick={() => setSelected(o)}>
+                      <td style={tdBase}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                          <Checkbox on={!!checked[o.id]} onClick={e => toggleRow(o.id, e)} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.id}</span>
+                        </span>
+                      </td>
+                      <td style={{ ...tdBase, maxWidth: 200 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.clientName}</span>
+                      </td>
+                      <td style={tdBase}>
+                        <div>{moDate(o.createdAt)}</div>
+                        <div style={supText}>{moTime(o.createdAt)}</div>
+                      </td>
+                      <td style={{ ...tdBase, color: MO_TEXT_HEAD, whiteSpace: 'nowrap' }}>
+                        {o.shipmentDate ? fmtShort(parseISO(o.shipmentDate)) : '—'}
+                      </td>
+                      <td style={{ ...tdBase, whiteSpace: 'nowrap' }}><CpStatusBadge status={o.status} /></td>
+                      <td style={{ ...tdBase, maxWidth: 240 }}>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.deliveryAddress}</div>
+                        <div style={supText}>{method}</div>
+                      </td>
+                      <td style={tdBase}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 220 }}>
+                          {shown.map((p, i) => (
+                            <span key={i} style={{
+                              display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 16,
+                              background: MO_BG_HEAD, fontFamily: CP_F, fontWeight: 500, fontSize: 12, lineHeight: '18px',
+                              color: MO_TEXT_VALUE, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>{p}</span>
+                          ))}
+                          {extra > 0 && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 16,
+                              background: MO_BG_HEAD, fontFamily: CP_F, fontWeight: 500, fontSize: 12, lineHeight: '18px', color: MO_TEXT_VALUE,
+                            }}>+{extra}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ ...tdBase, color: MO_TEXT_VOLUME, whiteSpace: 'nowrap' }}>
+                        {Math.round(orderVolumeKg(o))} кг
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           </div>
-      }
 
-      {/* Detail / status modal */}
-      {selected && !editing && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(61,43,31,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }} onClick={e=>e.target===e.currentTarget && setSelected(null)}>
-          <div style={{ background:CRD, borderRadius:16, boxShadow:'0 16px 48px rgba(61,43,31,.2)', width:'100%', maxWidth:640, maxHeight:'90vh', overflowY:'auto' }}>
-            <div style={{ padding:'18px 22px', borderBottom:`1px solid ${BRD}`, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-              <div>
-                <div style={{ fontFamily:FD, fontSize:18, fontWeight:700, color:DRK }}>Заявка № {selected.id}</div>
-                <div style={{ fontFamily:FB, fontSize:12, color:FG3, marginTop:3 }}>создана {fmtDate(selected.createdAt)}</div>
+          {pageCount > 1 && (
+            <div style={{ padding: '20px 20px 0' }}>
+              <div className="mo-pagi-desktop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+                <button type="button" onClick={() => safePage > 1 && setPage(safePage - 1)} disabled={safePage <= 1}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 8,
+                    cursor: safePage > 1 ? 'pointer' : 'default',
+                    color: safePage > 1 ? MO_TEXT_PRIMARY : MO_PAGI_DISABLE,
+                    fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px',
+                  }}>
+                  <span style={{ display: 'inline-flex' }}>{CpIco.arrowLeft}</span>Предыдущая
+                </button>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                  {pageNumbers.map((n, i) => {
+                    const active = n === safePage; const isNum = typeof n === 'number';
+                    return (
+                      <div key={i} onClick={() => isNum && setPage(n)} style={{
+                        width: 40, height: 40, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: active ? MO_BG_HEAD : 'transparent',
+                        color: active ? MO_NUM_TXT : MO_PAGI_MUTED, cursor: isNum ? 'pointer' : 'default',
+                        fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px',
+                      }}>{n}</div>
+                    );
+                  })}
+                </div>
+                <button type="button" onClick={() => safePage < pageCount && setPage(safePage + 1)} disabled={safePage >= pageCount}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 8,
+                    cursor: safePage < pageCount ? 'pointer' : 'default',
+                    color: safePage < pageCount ? MO_TEXT_PRIMARY : MO_PAGI_DISABLE,
+                    fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px',
+                  }}>
+                  Следующая <span style={{ display: 'inline-flex' }}>{CpIco.arrowRight}</span>
+                </button>
               </div>
-              <button onClick={()=>setSelected(null)} style={{ background:'none', border:'none', fontSize:22, color:FG3 }}>×</button>
+
+              <div className="mo-pagi-mobile" style={{ display: 'none', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <button type="button" onClick={() => safePage > 1 && setPage(safePage - 1)} disabled={safePage <= 1}
+                  aria-label="Предыдущая страница"
+                  style={{
+                    width: 40, height: 40, flexShrink: 0, borderRadius: 8, background: '#fff',
+                    border: `1px solid ${MO_BORDER_INPUT}`, boxShadow: MO_SHADOW_XS,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: safePage > 1 ? 'pointer' : 'default',
+                    color: safePage > 1 ? MO_TEXT_PRIMARY : MO_PAGI_DISABLE,
+                  }}>
+                  {CpIco.arrowLeft}
+                </button>
+                <span style={{ fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE }}>
+                  Страница {safePage} из {pageCount}
+                </span>
+                <button type="button" onClick={() => safePage < pageCount && setPage(safePage + 1)} disabled={safePage >= pageCount}
+                  aria-label="Следующая страница"
+                  style={{
+                    width: 40, height: 40, flexShrink: 0, borderRadius: 8, background: '#fff',
+                    border: `1px solid ${MO_BORDER_INPUT}`, boxShadow: MO_SHADOW_XS,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: safePage < pageCount ? 'pointer' : 'default',
+                    color: safePage < pageCount ? MO_TEXT_PRIMARY : MO_PAGI_DISABLE,
+                  }}>
+                  {CpIco.arrowRight}
+                </button>
+              </div>
             </div>
-            <div style={{ padding:'18px 22px' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
-                <div><div style={{...lbl, marginBottom:3}}>Контрагент</div><div style={{ fontFamily:FB, fontSize:14, color:DRK }}>{selected.clientName}</div></div>
-                <div><div style={{...lbl, marginBottom:3}}>Способ</div><div style={{ fontFamily:FB, fontSize:14, color:DRK }}>{selected.deliveryType==='pickup'?'Самовывоз':'Доставка'}</div></div>
-                <div style={{ gridColumn:'1 / span 2' }}><div style={{...lbl, marginBottom:3}}>Адрес</div><div style={{ fontFamily:FB, fontSize:14, color:DRK }}>{selected.deliveryAddress}</div></div>
-                {selected.shipmentDate && <div><div style={{...lbl, marginBottom:3}}>Дата отгрузки</div><div style={{ fontFamily:FB, fontSize:14, color:DRK, fontWeight:700 }}>{fmtLong(parseISO(selected.shipmentDate))}</div></div>}
-                <div><div style={{...lbl, marginBottom:3}}>Объём (расч.)</div><div style={{ fontFamily:FB, fontSize:14, color:DRK, fontWeight:700 }}>{Math.round(orderVolumeKg(selected))} кг</div></div>
-              </div>
-              <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:14 }}>
-                <thead><tr><th style={thS}>Продукт</th><th style={thS}>Тара</th><th style={thS}>Кол-во</th><th style={thS}>Заморозка</th></tr></thead>
-                <tbody>{selected.items.map((it,i)=>(
-                  <tr key={i}>
-                    <td style={tdS}>{it.product}</td>
-                    <td style={tdS}>{PKG[it.packaging]?.label || it.packaging}</td>
-                    <td style={tdS}>{it.qty} {PKG[it.packaging]?.unit||it.unit||''}</td>
-                    <td style={tdS}>{it.frozen ? <span style={{ color:'#4a7da8' }}>❄ {it.frozenComment||'да'}</span> : <span style={{ color:FG3 }}>—</span>}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-              {selected.comment && <div style={{ background:ALT, borderRadius:8, padding:'10px 14px', fontFamily:FB, fontSize:13, color:FG2, marginBottom:14 }}>💬 {selected.comment}</div>}
-
-              <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
-                <button onClick={()=>setEditing(selected)} style={{ background:DRK, color:'#fff', padding:'9px 18px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:12, border:'none' }}>✎ Редактировать</button>
-                <button onClick={()=>onPrint([selected])} style={{ background:'none', border:`1.5px solid ${BRD}`, color:DRK, padding:'9px 18px', borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:12 }}>🖨 Печать бланка</button>
-              </div>
-
-              <div style={{ ...lbl, marginBottom:8 }}>Статус</div>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {Object.entries(STATUSES).map(([k,v]) => (
-                  <button key={k} onClick={()=>changeStatus(selected.id, k)}
-                    style={{
-                      flex:'1 1 calc(50% - 4px)', padding:'10px',
-                      borderRadius:8, fontFamily:FL, fontWeight:700, fontSize:12,
-                      border:`2px solid ${v.color}`,
-                      background: selected.status===k ? v.color : 'transparent',
-                      color: selected.status===k ? 'white' : v.color, cursor:'pointer',
-                    }}>{v.label}{selected.status===k?' ✓':''}</button>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {editing && <LpOrderEditModal order={editing} onClose={()=>setEditing(null)} onSave={onEditSave}/>}
+      {selected && !editing && (
+        <LpAdminOrderDetail
+          order={selected}
+          onClose={() => setSelected(null)}
+          onStatus={changeStatus}
+          onEdit={() => setEditing(selected)}
+          onPrint={() => onPrint([selected])}
+        />
+      )}
+      {editing && <LpOrderEditModal order={editing} onClose={() => setEditing(null)} onSave={onEditSave} />}
     </div>
   );
 }
 
-/* ── PRINT BLANKS ── */
+function LpAdminOrderDetail({ order, onClose, onStatus, onEdit, onPrint }) {
+  const [isMobile, setIsMobile] = useStateAo(() => window.innerWidth < 768);
+  useEffectAo(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const upd = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', upd);
+    return () => mq.removeEventListener('change', upd);
+  }, []);
+
+  const STAT = [
+    ['pending',   'В обработке', '#2E90FA'],
+    ['accepted',  'Принята',     '#12B76A'],
+    ['shipped',   'Отгружена',   '#F79009'],
+    ['cancelled', 'Отменена',    '#F04438'],
+  ];
+  const isCur = k => order.status === k || (k === 'cancelled' && order.status === 'archive');
+
+  const StatusGroup = () => (
+    <div style={{
+      display: isMobile ? 'grid' : 'flex',
+      gridTemplateColumns: isMobile ? '1fr 1fr' : undefined,
+      border: '1px solid #ADAAAA',
+      borderRadius: 8,
+      overflow: 'hidden',
+    }}>
+      {STAT.map(([k, l, dc], i) => {
+        const cur = isCur(k);
+        const isLastCol = isMobile ? i % 2 !== 0 : i === 3;
+        const isLastRow = isMobile ? i >= 2 : true;
+        return (
+          <button key={k} type="button" onClick={() => onStatus(order.id, k)} style={{
+            flex: isMobile ? undefined : 1,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: isMobile ? '10px 12px' : '10px 16px',
+            cursor: 'pointer',
+            background: cur ? MO_BG_HEAD : '#fff',
+            border: 'none',
+            borderRight: !isLastCol ? '1px solid #ADAAAA' : 'none',
+            borderBottom: !isLastRow ? '1px solid #ADAAAA' : 'none',
+            fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE,
+          }}>
+            <span style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: dc, flexShrink: 0, display: 'inline-block',
+            }} />
+            {l}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const thS = {
+    fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_HEAD,
+    padding: '10px 16px', background: MO_BG_HEAD,
+    borderBottom: `1px solid ${MO_BORDER_NAV}`, textAlign: 'left', whiteSpace: 'nowrap',
+  };
+  const tdS = {
+    fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_PRIMARY,
+    padding: '14px 16px', borderBottom: `1px solid ${MO_BORDER_ROW}`,
+  };
+  const ItemsTable = () => (
+    <div style={{ border: `1px solid ${MO_BORDER_ROW}`, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 360 }}>
+          <thead>
+            <tr>
+              <th style={thS}>Продукт</th>
+              <th style={thS}>Тара</th>
+              <th style={thS}>Количество</th>
+              <th style={thS}>Заморозка</th>
+            </tr>
+          </thead>
+          <tbody>
+            {order.items.map((it, i) => (
+              <tr key={i}>
+                <td style={tdS}>{it.product}</td>
+                <td style={tdS}>{PKG[it.packaging]?.label || it.packaging}</td>
+                <td style={tdS}>{it.qty} {PKG[it.packaging]?.unit || ''}</td>
+                <td style={tdS}>{it.frozen ? `Да${it.frozenComment ? ' · ' + it.frozenComment : ''}` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    const fields = [
+      ['Контрагент',      order.clientName],
+      ['Способ доставки', order.deliveryType === 'pickup' ? 'Самовывоз' : 'Доставка'],
+      ['Адрес',           order.deliveryAddress],
+      order.shipmentDate ? ['Дата отгрузки', fmtLong(parseISO(order.shipmentDate))] : null,
+      ['Объём',           `${Math.round(orderVolumeKg(order))} кг`],
+    ].filter(Boolean);
+
+    const closeBtn = (
+      <button type="button" onClick={onClose} style={{
+        position: 'absolute', top: 12, right: 12,
+        width: 44, height: 44, borderRadius: 8, border: 'none', background: 'none',
+        cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
+        justifyContent: 'center', color: MO_TEXT_HEAD,
+      }}>{CpIco.close}</button>
+    );
+
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(251,248,241,0.7)',
+        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+        fontFamily: CP_F,
+      }}>
+        <div style={{
+          background: '#fff', borderRadius: '12px 12px 0 0',
+          width: '100%', maxHeight: 'calc(100dvh - 64px)',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0px 20px 24px -4px rgba(16,24,40,0.08)',
+          animation: 'cp-sheet-up .28s cubic-bezier(.16,1,.3,1)',
+        }}>
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ padding: '24px 16px 0', position: 'relative' }}>
+              <div style={{ fontFamily: CP_F, fontWeight: 600, fontSize: 18, lineHeight: '28px', color: MO_TEXT_PRIMARY, paddingRight: 52 }}>Заявка №{order.id}</div>
+              <div style={{ fontFamily: CP_F, fontSize: 14, lineHeight: '20px', color: MO_TEXT_HEAD, marginTop: 2 }}>Создана {moDate(order.createdAt)} · {moTime(order.createdAt)}</div>
+              {closeBtn}
+              <div style={{ height: 20 }} />
+            </div>
+            <div style={{ height: 1, background: MO_BORDER_NAV }} />
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            <div style={{ padding: '20px 16px' }}>
+              <div style={{ fontFamily: CP_F, fontWeight: 600, fontSize: 16, lineHeight: '24px', color: MO_TEXT_PRIMARY, marginBottom: 12 }}>Статус</div>
+              <StatusGroup />
+            </div>
+            <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {fields.map(([label, value], i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4, minHeight: 34 }}>
+                  <span style={{ fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '24px', color: MO_TEXT_HEAD, flexShrink: 0 }}>{label}</span>
+                  <span style={{ flex: 1, borderBottom: '1px dashed #DFDDDD', margin: '0 6px 5px', minWidth: 8 }} />
+                  <span style={{ fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '24px', color: MO_TEXT_VALUE, textAlign: 'right', maxWidth: '58%' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '16px' }}><ItemsTable /></div>
+            {order.comment && (
+              <div style={{ margin: '0 16px 16px', background: MO_BG_HEAD, borderRadius: 8, padding: '12px 14px', fontFamily: CP_F, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE }}>
+                <b>Комментарий:</b> {order.comment}
+              </div>
+            )}
+          </div>
+          <div style={{ flexShrink: 0, background: '#fff', borderTop: `1px solid ${MO_BORDER_NAV}`, padding: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button type="button" onClick={onPrint} style={{ width: '100%', padding: '12px 18px', borderRadius: 8, background: '#B67E40', border: '1px solid #B67E40', cursor: 'pointer', fontFamily: CP_F, fontWeight: 600, fontSize: 16, lineHeight: '24px', color: '#fff' }}>Печать бланка</button>
+              <button type="button" onClick={onEdit} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: '#fff', border: `1px solid ${MO_BORDER_INPUT}`, boxShadow: MO_SHADOW_XS, cursor: 'pointer', fontFamily: CP_F, fontWeight: 600, fontSize: 16, lineHeight: '24px', color: MO_TEXT_VALUE }}>Редактировать</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const lbl = { fontFamily: CP_F, fontWeight: 500, fontSize: 12, lineHeight: '18px', color: MO_TEXT_HEAD, marginBottom: 4 };
+  const val = { fontFamily: CP_F, fontWeight: 500, fontSize: 16, lineHeight: '24px', color: MO_TEXT_VALUE };
+
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()} style={{
+      position: 'fixed', inset: 0, zIndex: 300,
+      background: 'rgba(52,64,84,0.45)',
+      backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24, fontFamily: CP_F,
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 12,
+        boxShadow: '0px 20px 24px -4px rgba(16,24,40,0.08), 0px 8px 8px -4px rgba(16,24,40,0.03)',
+        width: '100%', maxWidth: 688,
+        maxHeight: '90vh', overflowY: 'auto',
+        display: 'flex', flexDirection: 'column',
+        animation: 'cp-card-in .22s ease-out',
+      }}>
+        <div style={{ flexShrink: 0, padding: '24px 24px 0', position: 'relative' }}>
+          <div style={{ fontFamily: CP_F, fontWeight: 600, fontSize: 18, lineHeight: '28px', color: MO_TEXT_PRIMARY }}>Заявка №{order.id}</div>
+          <div style={{ fontFamily: CP_F, fontSize: 14, lineHeight: '20px', color: MO_TEXT_HEAD, marginTop: 2 }}>Создана {moDate(order.createdAt)} · {moTime(order.createdAt)}</div>
+          <button type="button" onClick={onClose} style={{
+            position: 'absolute', top: 12, right: 12,
+            width: 44, height: 44, borderRadius: 8, border: 'none',
+            background: 'none', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: MO_TEXT_HEAD,
+          }}>{CpIco.close}</button>
+          <div style={{ height: 20 }} />
+          <div style={{ height: 1, background: MO_BORDER_NAV }} />
+        </div>
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{ fontFamily: CP_F, fontWeight: 600, fontSize: 16, lineHeight: '24px', color: MO_TEXT_PRIMARY, marginBottom: 12 }}>Статус</div>
+          <StatusGroup />
+        </div>
+        <div style={{ padding: '0 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px', marginBottom: 16 }}>
+            <div>
+              <div style={lbl}>Контрагент</div>
+              <div style={val}>{order.clientName}</div>
+            </div>
+            <div style={{ gridRow: '1 / span 2' }}>
+              <div style={lbl}>Адрес</div>
+              <div style={val}>{order.deliveryAddress}</div>
+            </div>
+            <div>
+              <div style={lbl}>Способ доставки</div>
+              <div style={val}>{order.deliveryType === 'pickup' ? 'Самовывоз' : 'Доставка'}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 32, marginBottom: 16 }}>
+            {order.shipmentDate && (
+              <div>
+                <div style={lbl}>Дата отгрузки</div>
+                <div style={val}>{fmtLong(parseISO(order.shipmentDate))}</div>
+              </div>
+            )}
+            <div>
+              <div style={lbl}>Объём</div>
+              <div style={val}>{Math.round(orderVolumeKg(order))} кг</div>
+            </div>
+          </div>
+          <div style={{ marginBottom: 16 }}><ItemsTable /></div>
+          {order.comment && (
+            <div style={{ background: MO_BG_HEAD, borderRadius: 8, padding: '12px 14px', fontFamily: CP_F, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE, marginBottom: 8 }}>
+              <b>Комментарий:</b> {order.comment}
+            </div>
+          )}
+        </div>
+        <div style={{ padding: '32px 24px 24px', display: 'flex', gap: 12 }}>
+          <button type="button" onClick={onEdit} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, cursor: 'pointer', background: '#fff', border: `1px solid ${MO_BORDER_INPUT}`, boxShadow: MO_SHADOW_XS, fontFamily: CP_F, fontWeight: 600, fontSize: 16, lineHeight: '24px', color: MO_TEXT_VALUE }}>Редактировать</button>
+          <button type="button" onClick={onPrint} style={{ flex: 1, padding: '10px 18px', borderRadius: 8, cursor: 'pointer', background: '#B67E40', border: '1px solid #B67E40', fontFamily: CP_F, fontWeight: 600, fontSize: 16, lineHeight: '24px', color: '#fff' }}>Печать бланка</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── PRINT BLANKS PAGE (A4 landscape, 2 бланка на лист) ── */
 function LpPrintBlanks({ orders, onClose }) {
   const today = new Date();
   const todayStr = `${String(today.getDate()).padStart(2,'0')} ${RU_MONTHS_SHORT[today.getMonth()].toUpperCase()} ${today.getFullYear()}`;
@@ -331,19 +722,10 @@ function LpPrintBlanks({ orders, onClose }) {
           color: #000; overflow: hidden;
         }
         .lp-blank-driver-strip { border-bottom: 1.2px solid #000; }
-        .lp-blank-driver-row {
-          display: grid; grid-template-columns: 1fr;
-          border-bottom: 1.2px solid #000;
-        }
+        .lp-blank-driver-row { display: grid; grid-template-columns: 1fr; border-bottom: 1.2px solid #000; }
         .lp-blank-driver-row:last-child { border-bottom: none; }
-        .lp-blank-driver-label {
-          padding: 1.4mm 2mm; font-weight: 700; font-size: 11pt;
-          font-family: 'PT Serif', serif;
-        }
-        .lp-blank-driver-write {
-          display: grid; grid-template-columns: 1fr 1fr;
-          height: 7mm;
-        }
+        .lp-blank-driver-label { padding: 1.4mm 2mm; font-weight: 700; font-size: 11pt; font-family: 'PT Serif', serif; }
+        .lp-blank-driver-write { display: grid; grid-template-columns: 1fr 1fr; height: 7mm; }
         .lp-blank-driver-write > div:first-child { border-right: 1.2px solid #000; }
         .lp-blank-meta {
           padding: 1mm 2mm; font-size: 7.5pt; color:#333;
@@ -434,36 +816,19 @@ function LpPrintBlanks({ orders, onClose }) {
   );
 }
 
-/* ── ADMIN PANEL SHELL ── */
-export function LpAdminPanel({ onLogout }) {
+/* ── ADMIN PANEL SHELL (новый сайдбар LpManagerLayout) ── */
+function LpAdminPanel({ onLogout }) {
   const [view, setView] = useStateAo('orders');
   const [printing, setPrinting] = useStateAo(null);
 
-  const navBtn = a => ({ background: a ? '#5e4426' : 'transparent', color: a ? '#fff' : '#c9b299', border:'none', padding:'6px 14px', borderRadius:6, fontFamily:FL, fontWeight:700, fontSize:12, cursor:'pointer' });
-
   return (
-    <div style={{ display:'flex', flexDirection:'column', minHeight:'100vh', background:BG }}>
-      <div style={{ background:DRK, padding:'0 24px', flexShrink:0 }}>
-        <div style={{ maxWidth:1300, margin:'0 auto', height:54, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:18 }}>
-            <LpLogo light/>
-            <div style={{ display:'flex', gap:4, marginLeft:14 }}>
-              <button style={navBtn(view==='orders')}        onClick={()=>setView('orders')}>Заявки</button>
-              <button style={navBtn(view==='counterparties')} onClick={()=>setView('counterparties')}>Контрагенты</button>
-              <button style={navBtn(view==='banner')}        onClick={()=>setView('banner')}>Баннер</button>
-            </div>
-          </div>
-          <button onClick={onLogout} style={{ background:'none', border:`1px solid #5e4426`, borderRadius:6, padding:'5px 14px', fontFamily:FL, fontWeight:700, fontSize:11, color:'#9a8070' }}>Выйти</button>
-        </div>
-      </div>
-
-      <div style={{ flex:1, overflowY:'auto' }}>
-        {view==='orders'         && <LpAdminOrders onPrint={list => setPrinting(list)} />}
-        {view==='counterparties' && <LpCounterparties/>}
-        {view==='banner'         && <LpBannerEditor/>}
-      </div>
-
-      {printing && <LpPrintBlanks orders={printing} onClose={()=>setPrinting(null)}/>}
-    </div>
+    <LpManagerLayout active={view} onNav={setView} onLogout={onLogout}>
+      {view === 'orders'         && <LpAdminOrders onPrint={list => setPrinting(list)} />}
+      {view === 'counterparties' && <LpCounterparties />}
+      {view === 'banner'         && <LpBannerEditor />}
+      {printing && <LpPrintBlanks orders={printing} onClose={() => setPrinting(null)} />}
+    </LpManagerLayout>
   );
 }
+
+export { LpAdminPanel, LpAdminOrders, LpAdminOrderDetail, LpPrintBlanks };

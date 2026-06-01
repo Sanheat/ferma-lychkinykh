@@ -174,6 +174,46 @@ select, input, textarea { font-family: inherit; }
   .cp-hist-pagi-prev    { color: #191414 !important; }
 }
 
+/* ════════════ ПАНЕЛЬ МЕНЕДЖЕРА ════════════ */
+
+/* Анимации модалок/боттом-шитов (заявки, редактирование, контрагенты) */
+@keyframes cp-card-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes cp-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Адаптивные отступы контентных блоков менеджера: 32 / 24 / 16 px */
+.mo-pad { padding-left: 32px; padding-right: 32px; }
+@media (max-width: 1024px) { .mo-pad { padding-left: 24px; padding-right: 24px; } }
+@media (max-width: 640px)  { .mo-pad { padding-left: 16px; padding-right: 16px; } }
+
+/* «Все заявки»: фиксированные inline-отступы 0 32px → переопределяем на планшете/мобиле */
+@media (max-width: 1024px) { .mo-orders .mo-pad { padding-left: 24px !important; padding-right: 24px !important; } }
+@media (max-width: 640px)  { .mo-orders .mo-pad { padding-left: 16px !important; padding-right: 16px !important; } }
+
+/* Пагинация заявок: desktop ↔ mobile */
+@media (max-width: 640px) {
+  .mo-pagi-desktop { display: none !important; }
+  .mo-pagi-mobile  { display: flex !important; }
+}
+
+/* Пагинация контрагентов: desktop ↔ mobile */
+@media (max-width: 640px) {
+  .cp-cp-pagi-desktop { display: none !important; }
+  .cp-cp-pagi-mobile  { display: flex !important; }
+}
+
+/* Контрагенты: шапка и поиск складываются на узких экранах */
+@media (max-width: 768px) {
+  .cp-cp-header { flex-direction: column !important; align-items: stretch !important; }
+  .cp-cp-add-btn-full { width: 100% !important; }
+  .cp-cp-search-wrap { width: 100% !important; }
+}
+
 /* ─── Адаптив 640px: Новая заявка (mobile 375) ─── */
 @media (max-width: 640px) {
   .cp-form-container {
