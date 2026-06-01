@@ -294,6 +294,8 @@ select, input, textarea { font-family: inherit; }
   background: #F5F0DF !important; border-color: #C4914C !important; color: #986338 !important;
 }
 
+/* Позиции заявки: базовый отступ между рядами 16px (мобайл/планшет), 8px на десктопе */
+.cp-order-pos-item { gap: 16px; }
 .cp-pos-divider { height: 1px; background: #dfdddd; }
 @media (min-width: 1025px) {
   .cp-order-pos-item { gap: 8px; }
