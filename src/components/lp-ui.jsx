@@ -191,13 +191,18 @@ export function CpSidebar({ active, onNav, counterparty, onLogout, ordersCount, 
       padding: '32px 16px', gap: 24, fontFamily: CP_F,
       position: 'sticky', top: 0, alignSelf: 'flex-start',
     }}>
-      <div style={{ padding: '0 8px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: CP_F, fontWeight: 500, fontSize: 24, lineHeight: '32px', color: CP_TEXT_PRIMARY }}>
-            Ферма Лычкиных
-          </div>
-          <div style={{ fontFamily: CP_F, fontWeight: 400, fontSize: 14, lineHeight: '20px', color: CP_TEXT_TERTIARY, marginTop: 4 }}>
-            Личный кабинет
+          {/* Новый логотип — виден ≥1025px через CSS .cp-logo-new */}
+          <img
+            className="cp-logo-new"
+            src="/assets/logo-lychkiny.svg"
+            alt="Крестьянское фермерское хозяйство семьи Лычкиных"
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+          />
+          {/* Штамп-фолбэк */}
+          <div className="cp-logo-old" style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+            <CpStamp size={170} />
           </div>
         </div>
         <button type="button" onClick={onClose} aria-label="Закрыть меню"
@@ -236,9 +241,6 @@ export function CpSidebar({ active, onNav, counterparty, onLogout, ordersCount, 
         })}
       </nav>
       <div style={{ flex: 1 }} />
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
-        <CpStamp size={170} />
-      </div>
       <button onClick={() => alert('Поддержка: +7 (000) 000-00-00 · ferma@lichkiny.ru')}
         style={{
           display: 'flex', alignItems: 'center', gap: 12,

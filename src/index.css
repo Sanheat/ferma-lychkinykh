@@ -296,8 +296,17 @@ select, input, textarea { font-family: inherit; }
 
 .cp-pos-divider { height: 1px; background: #dfdddd; }
 @media (min-width: 1025px) {
-  .cp-order-pos-item { gap: 8px; border-bottom: 1px solid #dfdddd; padding-bottom: 8px; }
+  .cp-order-pos-item { gap: 8px; }
+  /* разделитель только МЕЖДУ позициями — не под последней */
+  .cp-order-pos-item:not(:last-child) { border-bottom: 1px solid #dfdddd; padding-bottom: 8px; }
   .cp-pos-divider { display: none; }
+}
+
+/* Логотип в сайдбаре: новый логотип ≥1025px, иначе скрыт (в drawer — мобильная шапка) */
+.cp-logo-new { display: none !important; }
+.cp-logo-old { display: none !important; }
+@media (min-width: 1025px) {
+  .cp-logo-new { display: block !important; }
 }
 
 /* Модалка «Заявка принята» — bottom-sheet на мобиле, центр-карточка на десктопе */
