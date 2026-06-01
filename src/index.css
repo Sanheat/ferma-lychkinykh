@@ -244,6 +244,56 @@ select, input, textarea { font-family: inherit; }
 .cp-period-trigger:hover { border-color: #ADAAAA !important; }
 .cp-period-trigger.is-active { border-color: #C4914C !important; }
 
+/* Кастомный тултип «(?) Замороженное» — скрыт по умолчанию, виден по наведению */
+.cp-frozen-help .cp-frozen-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #191414;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+  z-index: 50;
+}
+.cp-frozen-help .cp-frozen-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #191414;
+}
+.cp-frozen-help:hover .cp-frozen-tip,
+.cp-frozen-help:focus-within .cp-frozen-tip { opacity: 1; }
+
+/* Кнопка «Оформить заявку» — контрастная в активном состоянии */
+.cp-submit-btn.is-active:hover { background: #986338 !important; border-color: #986338 !important; }
+.cp-submit-btn.is-disabled { background: #F5F0DF !important; border-color: #F5F0DF !important; color: #DDC594 !important; }
+
+/* Кнопка «Добавить позицию» — контрастится, когда все позиции заполнены */
+.cp-add-pos-btn.is-disabled {
+  background: #FBF9F1 !important; border-color: #FBF9F1 !important;
+  color: #DDC594 !important; cursor: not-allowed !important;
+}
+.cp-add-pos-btn.is-active {
+  background: #FBF9F1 !important; border-color: #DDC594 !important;
+  color: #B67E40 !important; cursor: pointer !important;
+}
+.cp-add-pos-btn.is-active:hover {
+  background: #F5F0DF !important; border-color: #C4914C !important; color: #986338 !important;
+}
+
 .cp-pos-divider { height: 1px; background: #dfdddd; }
 @media (min-width: 1025px) {
   .cp-order-pos-item { gap: 8px; border-bottom: 1px solid #dfdddd; padding-bottom: 8px; }
