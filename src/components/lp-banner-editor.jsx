@@ -423,8 +423,8 @@ function LpBannerEditor({ adminPwd }) {
                 <div style={{
                   position: 'absolute',
                   bottom: 'calc(100% + 8px)',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
+                  left: -8,
+                  transform: 'none',
                   background: '#191414',
                   borderRadius: 8,
                   padding: '8px 12px',
@@ -441,7 +441,7 @@ function LpBannerEditor({ adminPwd }) {
                   На баннере отображаются только заполненные поля
                   <div style={{
                     position: 'absolute',
-                    top: '100%', left: '50%',
+                    top: '100%', left: 16,
                     transform: 'translateX(-50%)',
                     width: 0, height: 0,
                     borderLeft: '5px solid transparent',
