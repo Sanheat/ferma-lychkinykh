@@ -6,7 +6,7 @@ import {
 } from './lp-ui';
 import {
   getOrders, getCounterparties, setStatus,
-  fmtDate, fmtShort, fmtLong, parseISO,
+  fmtShort, fmtLong, parseISO,
   PKG, STATUSES, PRODUCTS, RU_MONTHS_SHORT,
   DRK, BR, FD, FL,
 } from './lp-data';
@@ -164,21 +164,44 @@ function LpAdminOrders({ adminPwd, onPrint }) {
   const toggleRow = (id, e) => { e.stopPropagation(); setChecked(p => ({ ...p, [id]: !p[id] })); };
 
   const exportXLSX = () => {
-    const rows = [];
-    filtered.forEach(o => o.items.forEach(it => rows.push({
-      'Номер': o.id,
-      'Дата создания': fmtDate(o.createdAt),
-      'Дата отгрузки': o.shipmentDate ? fmtShort(parseISO(o.shipmentDate)) : '',
-      'Способ': o.deliveryType === 'pickup' ? 'Самовывоз' : 'Доставка',
-      'Контрагент': o.clientName,
-      'Адрес': o.deliveryAddress,
-      'Продукт': it.product,
-      'Тара': PKG[it.packaging]?.label || it.packaging,
-      'Кол-во': it.qty,
-      'Объём, кг (расч.)': orderVolumeKg(o).toFixed(1),
-      'Статус': STATUSES[o.status]?.label || o.status,
-    })));
-    const ws = XLSX.utils.json_to_sheet(rows);
+    // кг одной позиции с учётом тары: ящик≈14кг, лоток≈0.9кг, пакет = qty кг.
+    const itemKg = it => {
+      const q = parseFloat(it.qty) || 0;
+      if (it.packaging === 'yasik' || PKG[it.packaging]?.label?.startsWith('Ящик')) return q * 14;
+      if (it.packaging === 'lotok' || PKG[it.packaging]?.label === 'Лоток')          return q * 0.9;
+      return q;
+    };
+
+    // Контрагенты — столбцы (в порядке появления в заявках).
+    const clients = [];
+    filtered.forEach(o => { if (!clients.includes(o.clientName)) clients.push(o.clientName); });
+
+    // Агрегируем кг по позиции × контрагенту.
+    const matrix = {}; // product -> { clientName -> kg }
+    filtered.forEach(o => o.items.forEach(it => {
+      (matrix[it.product] ||= {});
+      matrix[it.product][o.clientName] = (matrix[it.product][o.clientName] || 0) + itemKg(it);
+    }));
+
+    // Позиции — строки в порядке референса (каталог PRODUCTS),
+    // плюс позиции, которых нет в каталоге (на случай старых заявок).
+    const productNames = PRODUCTS.map(p => p.name);
+    Object.keys(matrix).forEach(p => { if (!productNames.includes(p)) productNames.push(p); });
+
+    const round1 = v => Math.round(v * 10) / 10;
+
+    const aoa = [['Наименование продукции', ...clients]];
+    productNames.forEach(p => {
+      const row = [p];
+      clients.forEach(c => {
+        const v = matrix[p]?.[c];
+        row.push(v ? round1(v) : '');
+      });
+      aoa.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 32 }, ...clients.map(() => ({ wch: 14 }))];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Заявки');
     XLSX.writeFile(wb, `Заявки_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.xlsx`);
