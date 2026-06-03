@@ -208,6 +208,10 @@ function LpAdminOrders({ adminPwd, onPrint }) {
       aoa.push([p, ...cols.map((_, ci) => { const v = kg[p]?.[ci]; return v ? round1(v) : ''; })]);
     });
 
+    // Итоговая строка: сумма всех позиций по каждому столбцу (контрагенту).
+    const colTotals = cols.map((_, ci) => productNames.reduce((s, p) => s + (kg[p]?.[ci] || 0), 0));
+    aoa.push(['Всего, кг', ...colTotals.map(v => v ? round1(v) : '')]);
+
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
     /* ── Лёгкая стилизация в духе личного кабинета (фирменные тёплые тона) ── */
@@ -225,22 +229,26 @@ function LpAdminOrders({ adminPwd, onPrint }) {
     const sProd   = { font: { name: FONT, sz: 10, bold: true,  color: { rgb: TXT } }, fill: { patternType: 'solid', fgColor: { rgb: CREAM50 } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: allBd };
     const sData   = { font: { name: FONT, sz: 10, color: { rgb: NUM } }, alignment: { horizontal: 'center', vertical: 'center' }, border: allBd };
     const sDataAlt= { ...sData, fill: { patternType: 'solid', fgColor: { rgb: ALT } } };
+    const sTotLbl = { font: { name: FONT, sz: 11, bold: true, color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: BROWN } }, alignment: { horizontal: 'left', vertical: 'center' }, border: allBd };
+    const sTot    = { font: { name: FONT, sz: 11, bold: true, color: { rgb: BROWN } }, fill: { patternType: 'solid', fgColor: { rgb: CREAM100 } }, alignment: { horizontal: 'center', vertical: 'center' }, border: allBd };
 
     const nRows = aoa.length, nCols = 1 + cols.length;
+    const totalRow = nRows - 1;
     for (let r = 0; r < nRows; r++) {
       for (let c = 0; c < nCols; c++) {
         const ref = XLSX.utils.encode_cell({ r, c });
         const cell = ws[ref] || (ws[ref] = { t: 's', v: '' });
-        if      (r === 0) cell.s = c === 0 ? sLabel : sNum;
-        else if (r === 1) cell.s = c === 0 ? sLabel : sDate;
-        else if (r === 2) cell.s = c === 0 ? sCorner : sClient;
-        else if (c === 0) cell.s = sProd;
-        else              cell.s = (r % 2 === 1) ? sDataAlt : sData;
+        if      (r === 0)        cell.s = c === 0 ? sLabel : sNum;
+        else if (r === 1)        cell.s = c === 0 ? sLabel : sDate;
+        else if (r === 2)        cell.s = c === 0 ? sCorner : sClient;
+        else if (r === totalRow) cell.s = c === 0 ? sTotLbl : sTot;
+        else if (c === 0)        cell.s = sProd;
+        else                     cell.s = (r % 2 === 1) ? sDataAlt : sData;
       }
     }
 
     ws['!cols'] = [{ wch: 34 }, ...cols.map(() => ({ wch: 13 }))];
-    ws['!rows'] = [{ hpt: 22 }, { hpt: 20 }, { hpt: 30 }, ...productNames.map(() => ({ hpt: 20 }))];
+    ws['!rows'] = [{ hpt: 22 }, { hpt: 20 }, { hpt: 30 }, ...productNames.map(() => ({ hpt: 20 })), { hpt: 24 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Заявки');
