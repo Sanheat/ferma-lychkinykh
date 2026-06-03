@@ -242,7 +242,8 @@ export const fmtLong = d => {
 };
 
 /* ── SHARED INPUT STYLES ── */
-export const inp = { width:'100%', fontFamily:FB, fontSize:14, color:DRK, background:CRD, border:`1.5px solid ${BRD}`, borderRadius:8, padding:'9px 12px', outline:'none' };
+// fontSize:16 — порог, ниже которого iOS Safari авто-зумит при фокусе поля (поэтому 16, не меньше)
+export const inp = { width:'100%', fontFamily:FB, fontSize:16, color:DRK, background:CRD, border:`1.5px solid ${BRD}`, borderRadius:8, padding:'9px 12px', outline:'none' };
 export const lbl = { display:'block', fontFamily:FL, fontWeight:700, fontSize:10, letterSpacing:'.07em', textTransform:'uppercase', color:FG2, marginBottom:4 };
 
 /* ── LOGOS / BADGES ── */

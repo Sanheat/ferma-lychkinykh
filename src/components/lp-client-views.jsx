@@ -45,7 +45,7 @@ function LpClientLogin({ onLogin, onAdmin }) {
   const inputStyle = {
     width:'100%', boxSizing:'border-box',
     padding:'10px 14px', height:44,
-    fontFamily:CP_F, fontSize:14, lineHeight:'20px',
+    fontFamily:CP_F, fontSize:16, lineHeight:'20px',
     color:CP_TEXT_PRIMARY,
     background:'#fff',
     border:`1px solid ${CP_BORDER_INPUT}`, borderRadius:8,
