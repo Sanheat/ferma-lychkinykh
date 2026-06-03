@@ -265,7 +265,7 @@ function LpOrderForm({ counterparty, onHistory, onLogout }) {
   const [banner, setBanner] = useStateCl(DEFAULT_BANNER);
   useEffectCl(() => { getBanner().then(b => b && setBanner(b)); }, []);
 
-  const mkItem = () => ({ uid:genId(), product:'', packaging:'yasik', qty:'1', frozen:false, frozenComment:'' });
+  const mkItem = () => ({ uid:genId(), product:'', packaging:'', qty:'1', frozen:false, frozenComment:'' });
 
   // Восстанавливаем черновик заказа из localStorage (отдельно для каждого контрагента)
   const draft = useMemoCl(() => getOrderDraft(counterparty.id), [counterparty.id]);
@@ -303,7 +303,7 @@ function LpOrderForm({ counterparty, onHistory, onLogout }) {
 
   const submit = async () => {
     if (!deliveryType) { alert('Выберите способ получения'); return; }
-    if (items.some(it => !it.product || !it.qty || Number(it.qty) <= 0)) {
+    if (items.some(it => !it.product || !it.packaging || !it.qty || Number(it.qty) <= 0)) {
       alert('Заполните все позиции');
       return;
     }
