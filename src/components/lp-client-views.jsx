@@ -188,23 +188,6 @@ function LpClientLogin({ onLogin, onAdmin }) {
               {loading ? 'Вход…' : 'Войти'}
             </button>
           </form>
-
-          <div style={{
-            marginTop:20, textAlign:'center',
-            fontFamily:CP_F, fontSize:14, lineHeight:'20px',
-            color:CP_TEXT_MUTED,
-          }}>
-            Для сотрудников{' '}
-            <span
-              className="cp-login-link"
-              onClick={onAdmin}
-              style={{
-                color:'#B68B4A', fontWeight:600,
-                cursor:'pointer', textDecoration:'none',
-              }}>
-              Панель менеджера
-            </span>
-          </div>
         </div>
       </div>
 
