@@ -61,7 +61,7 @@ const MoIco = {
 
 function LpAdminOrders({ adminPwd, onPrint }) {
   const [orders, setOrders] = useStateAo([]);
-  const [tab, setTab] = useStateAo('pending');
+  const [tab, setTab] = useStateAo('all');
   const [search, setSearch] = useStateAo('');
   const [clientFilter, setClientFilter] = useStateAo('');
   const [period, setPeriod] = useStateAo({ start: null, end: null });
@@ -102,9 +102,10 @@ function LpAdminOrders({ adminPwd, onPrint }) {
     return Array.from(s).sort((a, b) => a.localeCompare(b, 'ru'));
   }, [orders]);
 
-  const inTab = (o, t) => t === 'cancelled' ? (o.status === 'cancelled' || o.status === 'archive') : o.status === t;
+  const inTab = (o, t) => t === 'all' ? true : t === 'cancelled' ? (o.status === 'cancelled' || o.status === 'archive') : o.status === t;
 
   const counts = useMemoAo(() => ({
+    all:       orders.length,
     pending:   orders.filter(o => inTab(o, 'pending')).length,
     accepted:  orders.filter(o => inTab(o, 'accepted')).length,
     shipped:   orders.filter(o => inTab(o, 'shipped')).length,
@@ -207,6 +208,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
   );
 
   const TABS = [
+    ['all', 'Все', counts.all],
     ['pending', 'В обработке', counts.pending],
     ['accepted', 'Принятые', counts.accepted],
     ['shipped', 'Отгруженные', counts.shipped],
