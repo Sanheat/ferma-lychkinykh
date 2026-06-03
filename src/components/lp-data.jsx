@@ -58,6 +58,19 @@ const LS_C = 'lp_client2';
 export const getClient  = () => { try { return JSON.parse(localStorage.getItem(LS_C)||'null'); } catch { return null; } };
 export const saveClient = c => c ? localStorage.setItem(LS_C, JSON.stringify(c)) : localStorage.removeItem(LS_C);
 
+/* ── ЧЕРНОВИК ЗАКАЗА (сохраняется в localStorage, отдельно для каждого контрагента) ── */
+const orderDraftKey = cpId => `lp_order_draft_${cpId ?? 'anon'}`;
+export const getOrderDraft = cpId => {
+  try { return JSON.parse(localStorage.getItem(orderDraftKey(cpId)) || 'null'); }
+  catch { return null; }
+};
+export const saveOrderDraft = (cpId, draft) => {
+  try { localStorage.setItem(orderDraftKey(cpId), JSON.stringify(draft)); } catch {}
+};
+export const clearOrderDraft = cpId => {
+  try { localStorage.removeItem(orderDraftKey(cpId)); } catch {}
+};
+
 /* ── ORDERS ── */
 const dbToOrder = r => ({
   id: String(r.id), clientId: r.counterparty_id, clientName: r.client_name,
@@ -98,38 +111,58 @@ export const updateOrder = async (id, patch) => {
 
 export const setStatus = (id, st) => updateOrder(id, { status: st });
 
-/* ── COUNTERPARTIES ── */
-export const getCounterparties = async () => {
-  const { data, error } = await supabase
-    .from('counterparties').select('id, name, login, password, address').order('created_at');
+/* ── COUNTERPARTIES ──
+   Таблица закрыта RLS — пароли никогда не уходят в браузер.
+   Весь доступ идёт через SECURITY DEFINER функции (см. supabase/security-upgrade.sql).
+   Все админские вызовы принимают пароль админа первым аргументом — он сверяется на сервере. */
+
+// Список контрагентов для админки (без паролей).
+export const getCounterparties = async adminPwd => {
+  const { data, error } = await supabase.rpc('admin_list_counterparties', { p_admin: adminPwd });
   if (error) { console.error('getCounterparties:', error); return []; }
   return data || [];
 };
 
+// Вход клиента: возвращает профиль { id, name, address } или null.
 export const verifyLogin = async (login, password) => {
-  const { data } = await supabase
-    .from('counterparties').select('id, name, login, address')
-    .eq('login', login).eq('password', password).maybeSingle();
-  return data || null;
+  const { data, error } = await supabase.rpc('client_login', { p_login: login, p_password: password });
+  if (error) { console.error('verifyLogin:', error); return null; }
+  return (data && data[0]) || null;
 };
 
-export const createCounterparty = async cp => {
-  const { data, error } = await supabase.from('counterparties')
-    .insert({ name: cp.name, login: cp.login, password: cp.password, address: cp.address || '' })
-    .select('id, name, login, password, address').single();
+// Профиль контрагента по id (восстановление сессии после перезагрузки).
+export const getCounterpartyProfile = async id => {
+  const { data, error } = await supabase.rpc('get_counterparty', { p_id: id });
+  if (error) { console.error('getCounterpartyProfile:', error); return null; }
+  return (data && data[0]) || null;
+};
+
+export const createCounterparty = async (adminPwd, cp) => {
+  const { data, error } = await supabase.rpc('admin_create_counterparty', {
+    p_admin: adminPwd, p_name: cp.name, p_login: cp.login,
+    p_password: cp.password, p_address: cp.address || '',
+  });
   if (error) throw error;
-  return data;
+  return (data && data[0]) || null;
 };
 
-export const updateCounterparty = async cp => {
-  const { error } = await supabase.from('counterparties')
-    .update({ name: cp.name, login: cp.login, password: cp.password, address: cp.address || '' })
-    .eq('id', cp.id);
+export const updateCounterparty = async (adminPwd, cp) => {
+  const { error } = await supabase.rpc('admin_update_counterparty', {
+    p_admin: adminPwd, p_id: cp.id, p_name: cp.name, p_login: cp.login,
+    p_address: cp.address || '', p_password: cp.password || null,
+  });
   if (error) throw error;
 };
 
-export const deleteCounterparty = async id => {
-  const { error } = await supabase.from('counterparties').delete().eq('id', id);
+export const resetCounterpartyPassword = async (adminPwd, id, newPassword) => {
+  const { error } = await supabase.rpc('admin_reset_password', {
+    p_admin: adminPwd, p_id: id, p_new_password: newPassword,
+  });
+  if (error) throw error;
+};
+
+export const deleteCounterparty = async (adminPwd, id) => {
+  const { error } = await supabase.rpc('admin_delete_counterparty', { p_admin: adminPwd, p_id: id });
   if (error) throw error;
 };
 
@@ -144,17 +177,20 @@ export const DEFAULT_BANNER = {
 };
 
 export const getBanner = async () => {
-  const { data } = await supabase.from('settings').select('value').eq('key', 'banner').single();
-  return data?.value || DEFAULT_BANNER;
+  const { data, error } = await supabase.rpc('get_banner');
+  if (error) { console.error('getBanner:', error); return DEFAULT_BANNER; }
+  return data || DEFAULT_BANNER;
 };
 
-export const saveBanner = async b => {
-  await supabase.from('settings').upsert({ key: 'banner', value: b });
+export const saveBanner = async (adminPwd, b) => {
+  const { error } = await supabase.rpc('admin_save_banner', { p_admin: adminPwd, p_value: b });
+  if (error) throw error;
 };
 
 export const verifyAdmin = async password => {
-  const { data } = await supabase.from('settings').select('value').eq('key', 'admin_password').single();
-  return data?.value === password;
+  const { data, error } = await supabase.rpc('verify_admin', { p_password: password });
+  if (error) { console.error('verifyAdmin:', error); return false; }
+  return data === true;
 };
 
 export const genId = () =>

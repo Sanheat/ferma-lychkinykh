@@ -180,8 +180,8 @@ export function CpStamp({ size = 204 }) {
 
 export function CpSidebar({ active, onNav, counterparty, onLogout, ordersCount, mobileOpen, onClose }) {
   const items = [
-    { key: 'form',    label: 'Главная',         icon: CpIco.home,    badge: ordersCount > 0 ? String(ordersCount) : null },
-    { key: 'history', label: 'История заказов', icon: CpIco.history, badge: null },
+    { key: 'form',    label: 'Главная',         icon: CpIco.home,    badge: null },
+    { key: 'history', label: 'История заказов', icon: CpIco.history, badge: ordersCount > 0 ? String(ordersCount) : null },
   ];
   return (
     <aside className={`sidebar-navigation${mobileOpen ? ' is-mobile-open' : ''}`} style={{

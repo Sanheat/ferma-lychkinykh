@@ -3,6 +3,7 @@ import {
   verifyLogin, saveClient, getBanner, DEFAULT_BANNER, addOrder, getOrders, genId,
   isoDate, firstShipmentFrom, parseISO, sameDay, fmtLong, fmtShort, fmtDate,
   RU_MONTHS, PKG, PRODUCTS,
+  getOrderDraft, saveOrderDraft, clearOrderDraft,
 } from './lp-data';
 import {
   CP_F, CP_FD, CP_CREAM, CP_CREAM_ACT, CP_BEIGE_300, CP_BEIGE_500, CP_BEIGE_600,
@@ -265,18 +266,33 @@ function LpOrderForm({ counterparty, onHistory, onLogout }) {
   useEffectCl(() => { getBanner().then(b => b && setBanner(b)); }, []);
 
   const mkItem = () => ({ uid:genId(), product:'', packaging:'yasik', qty:'1', frozen:false, frozenComment:'' });
-  const [shipDate, setShipDate] = useStateCl(() => isoDate(firstShipmentFrom()));
-  const [deliveryType, setDeliveryType] = useStateCl(null);
-  const [items, setItems] = useStateCl([mkItem()]);
-  const [comment, setComment] = useStateCl('');
+
+  // Восстанавливаем черновик заказа из localStorage (отдельно для каждого контрагента)
+  const draft = useMemoCl(() => getOrderDraft(counterparty.id), [counterparty.id]);
+  const defaultShipDate = isoDate(firstShipmentFrom());
+  // shipDate из черновика берём только если он не «протух» (не раньше ближайшей доступной даты)
+  const draftShipDate = draft?.shipDate && draft.shipDate >= defaultShipDate ? draft.shipDate : defaultShipDate;
+
+  const [shipDate, setShipDate] = useStateCl(draftShipDate);
+  const [deliveryType, setDeliveryType] = useStateCl(draft?.deliveryType ?? null);
+  const [items, setItems] = useStateCl(
+    Array.isArray(draft?.items) && draft.items.length ? draft.items : [mkItem()]
+  );
+  const [comment, setComment] = useStateCl(draft?.comment ?? '');
   const [showCal, setShowCal] = useStateCl(false);
   const [done, setDone] = useStateCl(null);
   const [submitting, setSubmitting] = useStateCl(false);
   const [myOrdersCount, setMyOrdersCount] = useStateCl(0);
 
+  // Автосохранение черновика при любом изменении параметров заказа
+  useEffectCl(() => {
+    if (done) return; // после успешной отправки черновик не сохраняем
+    saveOrderDraft(counterparty.id, { shipDate, deliveryType, items, comment });
+  }, [counterparty.id, shipDate, deliveryType, items, comment, done]);
+
   useEffectCl(() => {
     getOrders().then(all =>
-      setMyOrdersCount(all.filter(o => o.clientId === counterparty.id || o.clientName === counterparty.name).length)
+      setMyOrdersCount(all.filter(o => (o.clientId === counterparty.id || o.clientName === counterparty.name) && o.status === 'pending').length)
     );
   }, [counterparty, done]);
 
@@ -304,6 +320,7 @@ function LpOrderForm({ counterparty, onHistory, onLogout }) {
         })),
         comment, status: 'pending',
       });
+      clearOrderDraft(counterparty.id);
       setDone({ id, address: addr, shipmentDate: shipDate });
     } catch {
       alert('Ошибка при отправке заявки. Попробуйте снова.');
@@ -313,6 +330,7 @@ function LpOrderForm({ counterparty, onHistory, onLogout }) {
   };
 
   const reset = () => {
+    clearOrderDraft(counterparty.id);
     setItems([mkItem()]); setComment(''); setDone(null);
     setDeliveryType(null); setShipDate(isoDate(firstShipmentFrom()));
   };
@@ -877,7 +895,7 @@ function LpOrderHistory({ counterparty, onBack, onLogout }) {
     return [1, '...', p - 1, p, p + 1, '...', pageCount];
   }, [pageCount, safePage]);
 
-  const myOrdersCount = allOrders.length;
+  const myOrdersCount = allOrders.filter(o => o.status === 'pending').length;
 
   const toggleExpand = id => {
     setExpanded(prev => {
