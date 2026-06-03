@@ -84,7 +84,7 @@ function LpAdminLogin({ onLogin, onBack }) {
   );
 }
 
-function LpAdminLineItem({ item, idx, total, onChange, onRemove }) {
+function LpAdminLineItem({ item, idx, total, onChange, onRemove, isMobile }) {
   const prod = PRODUCTS.find(p => p.name === item.product);
   const availPkg = prod ? prod.pkg : ['yasik', 'paket', 'lotok'];
 
@@ -142,42 +142,64 @@ function LpAdminLineItem({ item, idx, total, onChange, onRemove }) {
 
   const toggleFrozen = () => onChange(idx, { ...item, frozen: !item.frozen, frozenComment: !item.frozen ? item.frozenComment : '' });
 
+  // Поля позиции — переиспользуются и в мобильной (стопкой), и в десктопной (одной строкой) раскладке
+  const productField = (
+    <div style={{ position: 'relative', ...(isMobile ? {} : { flex: 1, minWidth: 0 }) }}>
+      <select value={item.product} onChange={e => setProduct(e.target.value)} style={dropSt}>
+        <option value="">— Выберите позицию —</option>
+        {PRODUCTS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+      </select>
+      <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: TMT, pointerEvents: 'none', display: 'flex' }}>{IcoChev}</span>
+    </div>
+  );
+
+  const pkgField = (
+    <div style={{ position: 'relative', ...(isMobile ? {} : { flex: 1, minWidth: 0 }) }}>
+      <select value={item.packaging} onChange={e => setPkg(e.target.value)} style={dropSt}>
+        {availPkg.map(pid => <option key={pid} value={pid}>{PKG[pid].label}</option>)}
+      </select>
+      <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: TMT, pointerEvents: 'none', display: 'flex' }}>{IcoChev}</span>
+    </div>
+  );
+
+  const qtyField = pkg.type === 'kg' ? (
+    <input type="number" min="0.1" step="0.1" placeholder="кг"
+      value={item.qty} onChange={e => onChange(idx, { ...item, qty: e.target.value })}
+      style={{ width: 120, flexShrink: 0, border: `1px solid ${BDR2}`, borderRadius: 8, padding: '10px 14px', boxShadow: SHX, outline: 'none', fontFamily: F, fontSize: 14, fontWeight: 600, color: TSC, background: '#fff' }}
+    />
+  ) : (
+    <div style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, border: `1px solid ${BDR2}`, borderRadius: 8, overflow: 'hidden' }}>
+      <button type="button" onClick={decQty} style={{ background: '#fff', border: 'none', borderRight: `1px solid ${BDR2}`, padding: '10px 14px', cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>−</button>
+      <div style={{ minWidth: 46, padding: '10px 12px', textAlign: 'center', borderRight: `1px solid ${BDR2}`, background: '#fff', fontFamily: F, fontWeight: 600, fontSize: 14, color: TSC }}>{count}</div>
+      <button type="button" onClick={incQty} style={{ background: '#fff', border: 'none', padding: '10px 14px', cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>+</button>
+    </div>
+  );
+
+  const trashBtn = total > 1 ? (
+    <button type="button" onClick={() => onRemove(idx)} style={{ border: `1px solid ${BDR}`, borderRadius: 8, background: '#fff', padding: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: TMT, flexShrink: 0 }}>
+      {IcoTrash}
+    </button>
+  ) : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ position: 'relative' }}>
-        <select value={item.product} onChange={e => setProduct(e.target.value)} style={dropSt}>
-          <option value="">— Выберите позицию —</option>
-          {PRODUCTS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-        </select>
-        <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: TMT, pointerEvents: 'none', display: 'flex' }}>{IcoChev}</span>
-      </div>
-
-      <div style={{ position: 'relative' }}>
-        <select value={item.packaging} onChange={e => setPkg(e.target.value)} style={dropSt}>
-          {availPkg.map(pid => <option key={pid} value={pid}>{PKG[pid].label}</option>)}
-        </select>
-        <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: TMT, pointerEvents: 'none', display: 'flex' }}>{IcoChev}</span>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
-        {pkg.type === 'kg' ? (
-          <input type="number" min="0.1" step="0.1" placeholder="кг"
-            value={item.qty} onChange={e => onChange(idx, { ...item, qty: e.target.value })}
-            style={{ width: 120, border: `1px solid ${BDR2}`, borderRadius: 8, padding: '10px 14px', boxShadow: SHX, outline: 'none', fontFamily: F, fontSize: 14, fontWeight: 600, color: TSC, background: '#fff' }}
-          />
-        ) : (
-          <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${BDR2}`, borderRadius: 8, overflow: 'hidden' }}>
-            <button type="button" onClick={decQty} style={{ background: '#fff', border: 'none', borderRight: `1px solid ${BDR2}`, padding: '10px 14px', cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>−</button>
-            <div style={{ minWidth: 46, padding: '10px 12px', textAlign: 'center', borderRight: `1px solid ${BDR2}`, background: '#fff', fontFamily: F, fontWeight: 600, fontSize: 14, color: TSC }}>{count}</div>
-            <button type="button" onClick={incQty} style={{ background: '#fff', border: 'none', padding: '10px 14px', cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>+</button>
+      {isMobile ? (
+        <>
+          {productField}
+          {pkgField}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+            {qtyField}
+            {trashBtn}
           </div>
-        )}
-        {total > 1 && (
-          <button type="button" onClick={() => onRemove(idx)} style={{ border: `1px solid ${BDR}`, borderRadius: 8, background: '#fff', padding: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: TMT, flexShrink: 0 }}>
-            {IcoTrash}
-          </button>
-        )}
-      </div>
+        </>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {productField}
+          {pkgField}
+          {qtyField}
+          {trashBtn}
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div onClick={toggleFrozen} style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 6, border: `1px solid ${item.frozen ? '#B67E40' : '#D0D5DD'}`, background: item.frozen ? '#B67E40' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -377,7 +399,7 @@ function LpOrderEditModal({ order, adminPwd, onClose, onSave }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {draft.items.map((it, i) => (
-            <LpAdminLineItem key={it.uid} item={it} idx={i} total={draft.items.length} onChange={setItem} onRemove={removeItem} />
+            <LpAdminLineItem key={it.uid} item={it} idx={i} total={draft.items.length} onChange={setItem} onRemove={removeItem} isMobile={isMobile} />
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
