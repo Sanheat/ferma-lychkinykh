@@ -13,8 +13,9 @@ import {
 import { LpOrderEditModal, LpCounterparties } from './lp-admin-bits';
 import { LpBannerEditor } from './lp-banner-editor';
 import { LpManagerLayout } from './lp-manager-shell';
+import { LpHistRangeCalendar } from './lp-client-views';
 
-const { useState: useStateAo, useEffect: useEffectAo, useMemo: useMemoAo } = React;
+const { useState: useStateAo, useEffect: useEffectAo, useMemo: useMemoAo, useRef: useRefAo } = React;
 
 /** Расчётный объём заказа в кг: ящик≈14кг, лоток≈0.9кг, пакет = qty кг. */
 function orderVolumeKg(o) {
@@ -62,6 +63,10 @@ function LpAdminOrders({ adminPwd, onPrint }) {
   const [orders, setOrders] = useStateAo([]);
   const [tab, setTab] = useStateAo('pending');
   const [search, setSearch] = useStateAo('');
+  const [clientFilter, setClientFilter] = useStateAo('');
+  const [period, setPeriod] = useStateAo({ start: null, end: null });
+  const [showPeriodCal, setShowPeriodCal] = useStateAo(false);
+  const periodRef = useRefAo(null);
   const [page, setPage] = useStateAo(1);
   const [selected, setSelected] = useStateAo(null);
   const [editing, setEditing] = useStateAo(null);
@@ -76,6 +81,27 @@ function LpAdminOrders({ adminPwd, onPrint }) {
     return () => { alive = false; clearInterval(t); };
   }, []);
 
+  useEffectAo(() => {
+    if (!showPeriodCal) return;
+    const onDown = e => {
+      if (periodRef.current && !periodRef.current.contains(e.target)) setShowPeriodCal(false);
+    };
+    const onKey = e => { if (e.key === 'Escape') setShowPeriodCal(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showPeriodCal]);
+
+  // Список контрагентов для фильтра — уникальные имена из всех заявок
+  const clientOptions = useMemoAo(() => {
+    const s = new Set();
+    orders.forEach(o => { if (o.clientName) s.add(o.clientName); });
+    return Array.from(s).sort((a, b) => a.localeCompare(b, 'ru'));
+  }, [orders]);
+
   const inTab = (o, t) => t === 'cancelled' ? (o.status === 'cancelled' || o.status === 'archive') : o.status === t;
 
   const counts = useMemoAo(() => ({
@@ -87,8 +113,16 @@ function LpAdminOrders({ adminPwd, onPrint }) {
 
   const filtered = useMemoAo(() => {
     const q = search.trim().toLowerCase();
+    const ps = period.start ? new Date(period.start.getFullYear(), period.start.getMonth(), period.start.getDate()).getTime() : null;
+    const pe = period.end   ? new Date(period.end.getFullYear(),   period.end.getMonth(),   period.end.getDate(),   23, 59, 59, 999).getTime() : null;
     return orders.filter(o => {
       if (!inTab(o, tab)) return false;
+      if (clientFilter && o.clientName !== clientFilter) return false;
+      if (ps !== null || pe !== null) {
+        const t = parseISO(o.shipmentDate).getTime();
+        if (ps !== null && t < ps) return false;
+        if (pe !== null && t > pe) return false;
+      }
       if (q) {
         const hit = o.clientName.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) ||
           (o.deliveryAddress || '').toLowerCase().includes(q) ||
@@ -97,7 +131,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
       }
       return true;
     });
-  }, [orders, tab, search]);
+  }, [orders, tab, search, clientFilter, period]);
 
   const PAGE_SIZE = 8;
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -237,8 +271,9 @@ function LpAdminOrders({ adminPwd, onPrint }) {
       </div>
 
       <div className="mo-pad" style={{ padding: '0 32px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
-          <div style={{ width: 343, maxWidth: '100%' }}>
+        <div className="mo-filters" style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+          {/* Поиск */}
+          <div style={{ flex: '1 1 280px', minWidth: 0 }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
               background: '#fff', border: `1px solid ${MO_BORDER_INPUT}`, borderRadius: 8,
@@ -251,6 +286,66 @@ function LpAdminOrders({ adminPwd, onPrint }) {
                   fontFamily: CP_F, fontSize: 16, lineHeight: '24px', color: MO_TEXT_PRIMARY,
                 }} />
             </div>
+          </div>
+
+          {/* Фильтр по контрагенту */}
+          <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+            <select value={clientFilter} onChange={e => { setClientFilter(e.target.value); setPage(1); }}
+              style={{
+                width: '100%', padding: '10px 36px 10px 14px',
+                fontFamily: CP_F, fontSize: 16, lineHeight: '24px',
+                color: clientFilter ? MO_TEXT_PRIMARY : MO_TEXT_TAB,
+                background: `#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237E7979' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>") no-repeat right 14px center`,
+                border: `1px solid ${MO_BORDER_INPUT}`, borderRadius: 8, outline: 'none', cursor: 'pointer',
+                appearance: 'none', WebkitAppearance: 'none', boxShadow: MO_SHADOW_XS,
+              }}>
+              <option value="">Все контрагенты</option>
+              {clientOptions.map(name => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </div>
+
+          {/* Фильтр по дате отгрузки */}
+          <div ref={periodRef} style={{ flex: '1 1 280px', minWidth: 0, position: 'relative' }}>
+            <button type="button" onClick={() => setShowPeriodCal(s => !s)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                background: '#fff', border: `1px solid ${MO_BORDER_INPUT}`, borderRadius: 8,
+                padding: '10px 14px', boxShadow: MO_SHADOW_XS, textAlign: 'left',
+                fontFamily: CP_F, fontSize: 16, lineHeight: '24px',
+                color: period.start ? MO_TEXT_PRIMARY : MO_TEXT_TAB,
+              }}>
+              <span style={{ color: period.start ? MO_BRAND_ACTIVE : MO_TEXT_TAB, display: 'flex' }}>{CpIco.calendar}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {period.start && period.end
+                  ? `${fmtShort(period.start)} — ${fmtShort(period.end)}`
+                  : period.start
+                    ? `${fmtShort(period.start)} — …`
+                    : 'Период отгрузки'}
+              </span>
+              {period.start && (
+                <span
+                  role="button"
+                  aria-label="Очистить период"
+                  onClick={e => { e.stopPropagation(); setPeriod({ start: null, end: null }); setPage(1); }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 18, height: 18, borderRadius: 9, color: MO_TEXT_TAB, flexShrink: 0,
+                  }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </span>
+              )}
+            </button>
+            {showPeriodCal && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30 }}>
+                <LpHistRangeCalendar
+                  start={period.start}
+                  end={period.end}
+                  onChange={p => { setPeriod(p); setPage(1); }}
+                  onClear={() => { setPeriod({ start: null, end: null }); setPage(1); }}
+                  onClose={() => setShowPeriodCal(false)}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
