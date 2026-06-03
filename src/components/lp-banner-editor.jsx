@@ -78,7 +78,7 @@ function BnrUploadIco() {
   );
 }
 
-function LpBannerEditor() {
+function LpBannerEditor({ adminPwd }) {
   const { useState, useEffect } = React;
 
   const [bannerHidden, setBannerHidden] = useState(false);
@@ -138,7 +138,7 @@ function LpBannerEditor() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await saveBanner({
+      await saveBanner(adminPwd, {
         kind: 'promo',
         title,
         subtitle: desc,

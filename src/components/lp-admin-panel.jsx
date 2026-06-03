@@ -58,7 +58,7 @@ const MoIco = {
   ),
 };
 
-function LpAdminOrders({ onPrint }) {
+function LpAdminOrders({ adminPwd, onPrint }) {
   const [orders, setOrders] = useStateAo([]);
   const [tab, setTab] = useStateAo('pending');
   const [search, setSearch] = useStateAo('');
@@ -423,7 +423,7 @@ function LpAdminOrders({ onPrint }) {
           onPrint={() => onPrint([selected])}
         />
       )}
-      {editing && <LpOrderEditModal order={editing} onClose={() => setEditing(null)} onSave={onEditSave} />}
+      {editing && <LpOrderEditModal order={editing} adminPwd={adminPwd} onClose={() => setEditing(null)} onSave={onEditSave} />}
     </div>
   );
 }
@@ -817,15 +817,15 @@ function LpPrintBlanks({ orders, onClose }) {
 }
 
 /* ── ADMIN PANEL SHELL (новый сайдбар LpManagerLayout) ── */
-function LpAdminPanel({ onLogout }) {
+function LpAdminPanel({ adminPwd, onLogout }) {
   const [view, setView] = useStateAo('orders');
   const [printing, setPrinting] = useStateAo(null);
 
   return (
     <LpManagerLayout active={view} onNav={setView} onLogout={onLogout}>
-      {view === 'orders'         && <LpAdminOrders onPrint={list => setPrinting(list)} />}
-      {view === 'counterparties' && <LpCounterparties />}
-      {view === 'banner'         && <LpBannerEditor />}
+      {view === 'orders'         && <LpAdminOrders adminPwd={adminPwd} onPrint={list => setPrinting(list)} />}
+      {view === 'counterparties' && <LpCounterparties adminPwd={adminPwd} />}
+      {view === 'banner'         && <LpBannerEditor adminPwd={adminPwd} />}
       {printing && <LpPrintBlanks orders={printing} onClose={() => setPrinting(null)} />}
     </LpManagerLayout>
   );

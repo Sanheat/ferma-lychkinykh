@@ -7,6 +7,7 @@ import {
   DRK, CRD, FG3, ALT, FD, FB, BRD, BR, lbl, inp,
   genId, PKG, PRODUCTS, STATUSES,
   getCounterparties, createCounterparty, updateCounterparty, deleteCounterparty,
+  resetCounterpartyPassword,
   verifyAdmin, parseISO, isoDate, fmtLong, updateOrder,
 } from './lp-data';
 import { LpCalendar } from './lp-form-bits';
@@ -25,7 +26,7 @@ function LpAdminLogin({ onLogin, onBack }) {
     setBusy(true);
     try {
       const ok = await verifyAdmin(pw);
-      if (ok) onLogin();
+      if (ok) onLogin(pw);
       else setErr(true);
     } catch (e2) {
       console.error('verifyAdmin:', e2);
@@ -196,7 +197,7 @@ function LpAdminLineItem({ item, idx, total, onChange, onRemove }) {
   );
 }
 
-function LpOrderEditModal({ order, onClose, onSave }) {
+function LpOrderEditModal({ order, adminPwd, onClose, onSave }) {
   const [draft, setDraft] = useStateA(() => ({
     ...order,
     items: order.items.map(it => ({ ...it, uid: genId() })),
@@ -213,7 +214,7 @@ function LpOrderEditModal({ order, onClose, onSave }) {
     return () => mq.removeEventListener('change', upd);
   }, []);
 
-  useEffectA(() => { getCounterparties().then(setCps).catch(console.error); }, []);
+  useEffectA(() => { getCounterparties(adminPwd).then(setCps).catch(console.error); }, [adminPwd]);
 
   if (!order) return null;
 
@@ -611,39 +612,40 @@ function CpPagination({ page, total, onChange }) {
   );
 }
 
-function LpCounterparties() {
+function LpCounterparties({ adminPwd }) {
   const [list, setList]       = useStateA([]);
   const [loading, setLoading] = useStateA(true);
   const [editing, setEditing] = useStateA(null);
-  const [reveal, setReveal]   = useStateA({});
   const [query, setQuery]     = useStateA('');
   const [page, setPage]       = useStateA(1);
   const [busy, setBusy]       = useStateA(false);
   const PAGE_SIZE = 8;
 
-  const reload = () => getCounterparties().then(setList).catch(console.error).finally(() => setLoading(false));
+  const reload = () => getCounterparties(adminPwd).then(setList).catch(console.error).finally(() => setLoading(false));
   useEffectA(() => { reload(); }, []);
 
   const startNew  = () => setEditing({ id: null, name: '', login: '', password: '', address: '' });
-  const startEdit = c => setEditing({ ...c });
+  const startEdit = c => setEditing({ ...c, password: '' });
 
   const save = async () => {
     if (busy) return;
-    if (!editing.name.trim() || !editing.login.trim() || !editing.password.trim()) {
-      alert('Заполните название, логин и пароль'); return;
+    const isNew = editing.id == null || !list.find(c => c.id === editing.id);
+    if (!editing.name.trim() || !editing.login.trim() || (isNew && !editing.password.trim())) {
+      alert(isNew ? 'Заполните название, логин и пароль' : 'Заполните название и логин'); return;
     }
     const cleaned = {
       ...editing,
       name: editing.name.trim(),
       login: editing.login.trim(),
       address: (editing.address || '').trim(),
+      password: (editing.password || '').trim(),
     };
     setBusy(true);
     try {
-      if (cleaned.id == null || !list.find(c => c.id === cleaned.id)) {
-        await createCounterparty(cleaned);
+      if (isNew) {
+        await createCounterparty(adminPwd, cleaned);
       } else {
-        await updateCounterparty(cleaned);
+        await updateCounterparty(adminPwd, cleaned);
       }
       await reload();
       setEditing(null);
@@ -658,7 +660,7 @@ function LpCounterparties() {
   const remove = async id => {
     if (!confirm('Удалить контрагента?')) return;
     try {
-      await deleteCounterparty(id);
+      await deleteCounterparty(adminPwd, id);
       await reload();
     } catch (e) {
       console.error('delete counterparty:', e);
@@ -666,7 +668,18 @@ function LpCounterparties() {
     }
   };
 
-  const copyPwd = c => { navigator.clipboard && navigator.clipboard.writeText(c.password); };
+  const resetPwd = async c => {
+    const np = prompt(`Новый пароль для «${c.name}»:`);
+    if (np == null) return;
+    if (!np.trim()) { alert('Пароль не может быть пустым'); return; }
+    try {
+      await resetCounterpartyPassword(adminPwd, c.id, np.trim());
+      alert('Пароль обновлён');
+    } catch (e) {
+      console.error('reset password:', e);
+      alert('Не удалось обновить пароль');
+    }
+  };
 
   const filtered = useMemoA(() => {
     const q = query.trim().toLowerCase();
@@ -819,23 +832,20 @@ function LpCounterparties() {
                     <td style={{ ...tdS, whiteSpace: 'nowrap', maxWidth: 260 }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
                         <span style={{
-                          width: 80, flexShrink: 0, display: 'inline-block',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          letterSpacing: reveal[c.id] ? 0 : '0.12em',
+                          flexShrink: 0, display: 'inline-block',
+                          letterSpacing: '0.12em', color: '#ADAAAA',
                         }}>
-                          {reveal[c.id] ? c.password : '••••••••'}
+                          ••••••••
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <CpIconBtn title="Копировать пароль" onClick={() => copyPwd(c)} style={{ width: 28, height: 28 }}>
-                            {CpIco.copy}
-                          </CpIconBtn>
-                          <CpIconBtn
-                            title={reveal[c.id] ? 'Скрыть пароль' : 'Показать пароль'}
-                            onClick={() => setReveal(r => ({ ...r, [c.id]: !r[c.id] }))}
-                            style={{ width: 28, height: 28 }}>
-                            {reveal[c.id] ? CpIco.eyeOff : CpIco.eye}
-                          </CpIconBtn>
-                        </div>
+                        <button type="button" onClick={() => resetPwd(c)} style={{
+                          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                          fontFamily: CP_F, fontWeight: 500, fontSize: 13, lineHeight: '18px',
+                          color: '#B67E40', whiteSpace: 'nowrap', transition: 'color .15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#986338'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#B67E40'; }}>
+                          Сбросить
+                        </button>
                       </div>
                     </td>
                     <td style={{ ...tdAddr, maxWidth: 260 }}>
@@ -939,8 +949,11 @@ function CpEditModal({ editing, setEditing, list, onSave, busy }) {
           <CpInput value={editing.login} onChange={e => setEditing(p => ({ ...p, login: e.target.value.replace(/\s/g, '') }))} placeholder="ivanov" />
         </div>
         <div>
-          <label style={fieldLbl}>Пароль</label>
-          <CpInput value={editing.password} onChange={e => setEditing(p => ({ ...p, password: e.target.value }))} placeholder="••••••••" />
+          <label style={fieldLbl}>
+            {isNew ? 'Пароль' : 'Новый пароль'}
+            {!isNew && <span style={{ color: '#7E7979', fontWeight: 400 }}> · пусто = не менять</span>}
+          </label>
+          <CpInput value={editing.password} onChange={e => setEditing(p => ({ ...p, password: e.target.value }))} placeholder={isNew ? '••••••••' : 'оставьте пустым'} />
           <button type="button" onClick={genPassword} style={{
             marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 5,
             background: 'none', border: 'none', padding: 0, cursor: 'pointer',

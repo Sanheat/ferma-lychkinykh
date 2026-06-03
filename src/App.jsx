@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getClient, saveClient, getCounterparties } from './components/lp-data';
+import { getClient, saveClient, getCounterpartyProfile } from './components/lp-data';
 import { LpClientLogin, LpOrderForm, LpOrderHistory, Lp404 } from './components/lp-client-views';
 import { LpAdminLogin } from './components/lp-admin-bits';
 import { LpAdminPanel } from './components/lp-admin-panel';
@@ -12,7 +12,7 @@ function App() {
     return 'client';
   };
   const [mode, setMode] = useState(initialMode);
-  const [adminAuthed, setAdminAuthed] = useState(false);
+  const [adminPwd, setAdminPwd] = useState(null);
   const [client, setClient] = useState(null);
   const [appLoading, setAppLoading] = useState(true);
   const [view, setView] = useState('form');
@@ -20,8 +20,8 @@ function App() {
   useEffect(() => {
     const saved = getClient();
     if (!saved) { setAppLoading(false); return; }
-    getCounterparties()
-      .then(cps => setClient(cps.find(c => c.id === saved.id) || null))
+    getCounterpartyProfile(saved.id)
+      .then(c => setClient(c || null))
       .finally(() => setAppLoading(false));
   }, []);
 
@@ -32,7 +32,7 @@ function App() {
   }, []);
 
   const goAdmin  = () => { window.location.hash = '#admin'; setMode('admin'); };
-  const goClient = () => { window.location.hash = ''; setMode('client'); setAdminAuthed(false); };
+  const goClient = () => { window.location.hash = ''; setMode('client'); setAdminPwd(null); };
   const logout   = () => { saveClient(null); setClient(null); setView('form'); };
 
   if (appLoading) return (
@@ -45,8 +45,8 @@ function App() {
     return <Lp404 onBack={() => { window.history.back(); }} onHome={goClient} />;
   }
   if (mode === 'admin') {
-    if (!adminAuthed) return <LpAdminLogin onLogin={() => setAdminAuthed(true)} onBack={goClient} />;
-    return <LpAdminPanel onLogout={goClient} />;
+    if (!adminPwd) return <LpAdminLogin onLogin={pwd => setAdminPwd(pwd)} onBack={goClient} />;
+    return <LpAdminPanel adminPwd={adminPwd} onLogout={goClient} />;
   }
   if (!client) return <LpClientLogin onLogin={c => setClient(c)} onAdmin={goAdmin} />;
   if (view === 'history') return <LpOrderHistory counterparty={client} onBack={() => setView('form')} onLogout={logout} />;
