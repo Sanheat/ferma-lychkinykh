@@ -364,6 +364,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
                       <Checkbox on={allChecked} onClick={toggleAll} />№
                     </span>
                   </th>
+                  <th style={thBase}>Статус</th>
                   <th style={thBase}>Контрагент</th>
                   <th style={thBase}>Создан</th>
                   <th style={thBase}>
@@ -371,7 +372,6 @@ function LpAdminOrders({ adminPwd, onPrint }) {
                       Отгрузка <span style={{ display: 'flex', color: MO_TEXT_HEAD }}>{MoIco.arrowDown}</span>
                     </span>
                   </th>
-                  <th style={thBase}>Статус</th>
                   <th style={thBase}>Адрес/способ</th>
                   <th style={thBase}>Позиции</th>
                   <th style={thBase}>Объём</th>
@@ -399,6 +399,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.id}</span>
                         </span>
                       </td>
+                      <td style={{ ...tdBase, whiteSpace: 'nowrap' }}><CpStatusBadge status={o.status} /></td>
                       <td style={{ ...tdBase, maxWidth: 200 }}>
                         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.clientName}</span>
                       </td>
@@ -409,7 +410,6 @@ function LpAdminOrders({ adminPwd, onPrint }) {
                       <td style={{ ...tdBase, color: MO_TEXT_HEAD, whiteSpace: 'nowrap' }}>
                         {o.shipmentDate ? fmtShort(parseISO(o.shipmentDate)) : '—'}
                       </td>
-                      <td style={{ ...tdBase, whiteSpace: 'nowrap' }}><CpStatusBadge status={o.status} /></td>
                       <td style={{ ...tdBase, maxWidth: 240 }}>
                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.deliveryAddress}</div>
                         <div style={supText}>{method}</div>
