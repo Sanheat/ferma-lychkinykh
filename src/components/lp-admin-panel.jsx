@@ -209,8 +209,9 @@ function LpAdminOrders({ adminPwd, onPrint }) {
     });
 
     // Итоговая строка: сумма всех позиций по каждому столбцу (контрагенту).
-    const colTotals = cols.map((_, ci) => productNames.reduce((s, p) => s + (kg[p]?.[ci] || 0), 0));
-    aoa.push(['Всего, кг', ...colTotals.map(v => v ? round1(v) : '')]);
+    // Значения проставляются формулой SUM (ниже), здесь — кешированные числа для предпросмотра.
+    const colTotals = cols.map((_, ci) => round1(productNames.reduce((s, p) => s + (kg[p]?.[ci] || 0), 0)));
+    aoa.push(['Всего, кг', ...colTotals]);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
@@ -234,6 +235,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
 
     const nRows = aoa.length, nCols = 1 + cols.length;
     const totalRow = nRows - 1;
+    const firstDataRow = 4, lastDataRow = productNames.length + 3; // Excel-строки (1-based)
     for (let r = 0; r < nRows; r++) {
       for (let c = 0; c < nCols; c++) {
         const ref = XLSX.utils.encode_cell({ r, c });
@@ -241,7 +243,14 @@ function LpAdminOrders({ adminPwd, onPrint }) {
         if      (r === 0)        cell.s = c === 0 ? sLabel : sNum;
         else if (r === 1)        cell.s = c === 0 ? sLabel : sDate;
         else if (r === 2)        cell.s = c === 0 ? sCorner : sClient;
-        else if (r === totalRow) cell.s = c === 0 ? sTotLbl : sTot;
+        else if (r === totalRow) {
+          cell.s = c === 0 ? sTotLbl : sTot;
+          if (c > 0) {
+            const colL = XLSX.utils.encode_col(c);
+            cell.t = 'n';
+            cell.f = `SUM(${colL}${firstDataRow}:${colL}${lastDataRow})`;
+          }
+        }
         else if (c === 0)        cell.s = sProd;
         else                     cell.s = (r % 2 === 1) ? sDataAlt : sData;
       }
