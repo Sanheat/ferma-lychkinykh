@@ -1,5 +1,5 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import {
   CP_F, CP_SHADOW_SM,
   CpIco, CpStatusBadge,
@@ -172,36 +172,76 @@ function LpAdminOrders({ adminPwd, onPrint }) {
       return q;
     };
 
-    // Контрагенты — столбцы (в порядке появления в заявках).
-    const clients = [];
-    filtered.forEach(o => { if (!clients.includes(o.clientName)) clients.push(o.clientName); });
-
-    // Агрегируем кг по позиции × контрагенту.
-    const matrix = {}; // product -> { clientName -> kg }
-    filtered.forEach(o => o.items.forEach(it => {
-      (matrix[it.product] ||= {});
-      matrix[it.product][o.clientName] = (matrix[it.product][o.clientName] || 0) + itemKg(it);
-    }));
+    // Столбцы — заявки: над контрагентом дата отгрузки, ещё выше номер заявки.
+    // Заявки одного контрагента идут рядом, сортировка по дате отгрузки.
+    const cols = filtered.map(o => ({
+      num: o.id,
+      client: o.clientName,
+      rawDate: o.shipmentDate || '',
+      date: o.shipmentDate ? fmtShort(parseISO(o.shipmentDate)) : '',
+      items: o.items,
+    })).sort((a, b) =>
+      a.client.localeCompare(b.client, 'ru') ||
+      a.rawDate.localeCompare(b.rawDate) ||
+      String(a.num).localeCompare(String(b.num)));
 
     // Позиции — строки в порядке референса (каталог PRODUCTS),
     // плюс позиции, которых нет в каталоге (на случай старых заявок).
     const productNames = PRODUCTS.map(p => p.name);
-    Object.keys(matrix).forEach(p => { if (!productNames.includes(p)) productNames.push(p); });
+    cols.forEach(c => c.items.forEach(it => { if (!productNames.includes(it.product)) productNames.push(it.product); }));
+
+    // Агрегируем кг: позиция × столбец(заявка).
+    const kg = {}; // product -> { colIndex -> kg }
+    cols.forEach((c, ci) => c.items.forEach(it => {
+      (kg[it.product] ||= {});
+      kg[it.product][ci] = (kg[it.product][ci] || 0) + itemKg(it);
+    }));
 
     const round1 = v => Math.round(v * 10) / 10;
 
-    const aoa = [['Наименование продукции', ...clients]];
+    const aoa = [
+      ['Номер заявки',           ...cols.map(c => c.num)],
+      ['Дата отгрузки',          ...cols.map(c => c.date)],
+      ['Наименование продукции', ...cols.map(c => c.client)],
+    ];
     productNames.forEach(p => {
-      const row = [p];
-      clients.forEach(c => {
-        const v = matrix[p]?.[c];
-        row.push(v ? round1(v) : '');
-      });
-      aoa.push(row);
+      aoa.push([p, ...cols.map((_, ci) => { const v = kg[p]?.[ci]; return v ? round1(v) : ''; })]);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{ wch: 32 }, ...clients.map(() => ({ wch: 14 }))];
+
+    /* ── Лёгкая стилизация в духе личного кабинета (фирменные тёплые тона) ── */
+    const BROWN = '986338', CREAM100 = 'F5F0DF', CREAM50 = 'FBF9F1', ALT = 'FBFAF7';
+    const BORDER = 'E4DDD2', TXT = '191414', MUTE = '7E7979', NUM = '3C3636';
+    const bd = { style: 'thin', color: { rgb: BORDER } };
+    const allBd = { top: bd, bottom: bd, left: bd, right: bd };
+    const FONT = 'PT Sans';
+
+    const sNum    = { font: { name: FONT, sz: 10, bold: true,  color: { rgb: BROWN } }, fill: { patternType: 'solid', fgColor: { rgb: CREAM50  } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: allBd };
+    const sDate   = { font: { name: FONT, sz: 10, bold: false, color: { rgb: MUTE  } }, fill: { patternType: 'solid', fgColor: { rgb: CREAM50  } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: allBd };
+    const sClient = { font: { name: FONT, sz: 11, bold: true,  color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: BROWN } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: allBd };
+    const sLabel  = { font: { name: FONT, sz: 10, bold: true,  color: { rgb: BROWN } }, fill: { patternType: 'solid', fgColor: { rgb: CREAM100 } }, alignment: { horizontal: 'right',  vertical: 'center' }, border: allBd };
+    const sCorner = { font: { name: FONT, sz: 11, bold: true,  color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: BROWN } }, alignment: { horizontal: 'left',   vertical: 'center', wrapText: true }, border: allBd };
+    const sProd   = { font: { name: FONT, sz: 10, bold: true,  color: { rgb: TXT } }, fill: { patternType: 'solid', fgColor: { rgb: CREAM50 } }, alignment: { horizontal: 'left', vertical: 'center', wrapText: true }, border: allBd };
+    const sData   = { font: { name: FONT, sz: 10, color: { rgb: NUM } }, alignment: { horizontal: 'center', vertical: 'center' }, border: allBd };
+    const sDataAlt= { ...sData, fill: { patternType: 'solid', fgColor: { rgb: ALT } } };
+
+    const nRows = aoa.length, nCols = 1 + cols.length;
+    for (let r = 0; r < nRows; r++) {
+      for (let c = 0; c < nCols; c++) {
+        const ref = XLSX.utils.encode_cell({ r, c });
+        const cell = ws[ref] || (ws[ref] = { t: 's', v: '' });
+        if      (r === 0) cell.s = c === 0 ? sLabel : sNum;
+        else if (r === 1) cell.s = c === 0 ? sLabel : sDate;
+        else if (r === 2) cell.s = c === 0 ? sCorner : sClient;
+        else if (c === 0) cell.s = sProd;
+        else              cell.s = (r % 2 === 1) ? sDataAlt : sData;
+      }
+    }
+
+    ws['!cols'] = [{ wch: 34 }, ...cols.map(() => ({ wch: 13 }))];
+    ws['!rows'] = [{ hpt: 22 }, { hpt: 20 }, { hpt: 30 }, ...productNames.map(() => ({ hpt: 20 }))];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Заявки');
     XLSX.writeFile(wb, `Заявки_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.xlsx`);
