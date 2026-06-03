@@ -27,8 +27,8 @@ const MgrIco = {
 };
 
 const MGR_ACCOUNT = {
-  name: 'ИП Иванов',
-  address: 'г. Краснодар, ул. Северная 16/2 стр 1',
+  name: 'Администратор',
+  address: 'Краснодарский край',
 };
 
 function LpManagerSidebar({ active, onNav, onLogout, mobileOpen, onClose }) {
@@ -93,20 +93,6 @@ function LpManagerSidebar({ active, onNav, onLogout, mobileOpen, onClose }) {
       </nav>
 
       <div style={{ flex: 1 }} />
-
-      <button onClick={() => alert('Поддержка: +7 (000) 000-00-00 · ferma@lichkiny.ru')}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '10px 12px', borderRadius: 6,
-          background: 'transparent', border: 'none', cursor: 'pointer',
-          color: CP_GRAY_900, fontFamily: CP_F, fontWeight: 500, fontSize: 16, lineHeight: '24px',
-          textAlign: 'left',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = CP_CREAM_HOV; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
-        <span style={{ color: CP_GRAY_700, display: 'flex' }}>{CpIco.help}</span>
-        <span>Поддержка</span>
-      </button>
 
       <div style={{
         borderTop: `1px solid ${CP_BORDER_NAV}`, padding: '24px 0 0 8px',
