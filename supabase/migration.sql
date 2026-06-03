@@ -33,6 +33,11 @@ create table settings (
   value jsonb not null
 );
 
+-- ── Отключаем RLS (приложение использует server-side anon key) ──
+alter table counterparties disable row level security;
+alter table orders         disable row level security;
+alter table settings       disable row level security;
+
 -- ── Начальные данные ───────────────────────────────
 insert into settings (key, value) values
   ('admin_password', '"лычкины2024"'),
