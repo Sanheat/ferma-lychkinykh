@@ -617,7 +617,7 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
           <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column' }}>
             <select value={item.product} onChange={e=>onChange(idx, { ...item, product:e.target.value })}
               style={buildSelectStyle(!!item.product)}>
-              <option value="">Продукт</option>
+              <option value="" disabled hidden>Продукт</option>
               {productOptions.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
