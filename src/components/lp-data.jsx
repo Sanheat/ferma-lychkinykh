@@ -58,6 +58,19 @@ const LS_C = 'lp_client2';
 export const getClient  = () => { try { return JSON.parse(localStorage.getItem(LS_C)||'null'); } catch { return null; } };
 export const saveClient = c => c ? localStorage.setItem(LS_C, JSON.stringify(c)) : localStorage.removeItem(LS_C);
 
+/* ── ЧЕРНОВИК ЗАКАЗА (сохраняется в localStorage, отдельно для каждого контрагента) ── */
+const orderDraftKey = cpId => `lp_order_draft_${cpId ?? 'anon'}`;
+export const getOrderDraft = cpId => {
+  try { return JSON.parse(localStorage.getItem(orderDraftKey(cpId)) || 'null'); }
+  catch { return null; }
+};
+export const saveOrderDraft = (cpId, draft) => {
+  try { localStorage.setItem(orderDraftKey(cpId), JSON.stringify(draft)); } catch {}
+};
+export const clearOrderDraft = cpId => {
+  try { localStorage.removeItem(orderDraftKey(cpId)); } catch {}
+};
+
 /* ── ORDERS ── */
 const dbToOrder = r => ({
   id: String(r.id), clientId: r.counterparty_id, clientName: r.client_name,
