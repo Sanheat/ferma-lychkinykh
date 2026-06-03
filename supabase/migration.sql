@@ -72,7 +72,7 @@ create or replace function client_login(p_login text, p_password text)
 returns table (id uuid, name text, address text)
 language sql security definer set search_path = public as $$
   select id, name, address from counterparties
-  where login = p_login and password = p_password limit 1;
+  where lower(btrim(login)) = lower(btrim(p_login)) and password = p_password limit 1;
 $$;
 
 create or replace function get_counterparty(p_id uuid)

@@ -53,7 +53,7 @@ set search_path = public
 as $$
   select id, name, address
   from counterparties
-  where login = p_login and password = p_password
+  where lower(btrim(login)) = lower(btrim(p_login)) and password = p_password
   limit 1;
 $$;
 
