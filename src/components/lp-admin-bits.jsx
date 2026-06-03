@@ -1,6 +1,8 @@
 import React from 'react';
 import {
-  CP_F, CP_SHADOW_MOD,
+  CP_F, CP_FD, CP_CREAM, CP_BEIGE_500, CP_GRAY_900,
+  CP_TEXT_PRIMARY, CP_TEXT_TERTIARY, CP_BORDER_INPUT,
+  CP_SHADOW_XS, CP_SHADOW_MOD, CP_ERROR,
   CpIco, CpIconBtn, CpInput,
 } from './lp-ui';
 import {
@@ -36,49 +38,136 @@ function LpAdminLogin({ onLogin, onBack }) {
     }
   };
 
+  const inputStyle = {
+    width:'100%', boxSizing:'border-box',
+    padding:'10px 14px', height:44,
+    fontFamily:CP_F, fontSize:16, lineHeight:'20px',
+    color:CP_TEXT_PRIMARY,
+    background:'#fff',
+    border:`1px solid ${CP_BORDER_INPUT}`, borderRadius:8,
+    outline:'none', boxShadow:CP_SHADOW_XS,
+  };
+
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:DRK, padding:24 }}>
-      <div style={{ background:CRD, borderRadius:16, boxShadow:'0 16px 48px rgba(0,0,0,.25)', padding:'40px 36px', width:'100%', maxWidth:360 }}>
-        <div style={{ fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:10, letterSpacing:'.08em', textTransform:'uppercase', color:FG3, background:ALT, display:'inline-block', padding:'4px 10px', borderRadius:9999, marginBottom:18 }}>ПАНЕЛЬ МЕНЕДЖЕРА</div>
-        <div style={{ fontFamily:FD, fontSize:22, fontWeight:700, color:DRK, marginBottom:6 }}>Вход для сотрудников</div>
-        <div style={{ fontFamily:FB, fontSize:13, color:'#6b5245', marginBottom:26 }}>Ферма Лычкиных · Система заявок</div>
-        <form onSubmit={submit}>
-          <div style={{ marginBottom: err?4:16 }}>
-            <label style={lbl}>Пароль</label>
-            <div style={{ position:'relative' }}>
-              <input style={{...inp, borderColor: err ? BR : BRD, paddingRight:44}} type={showPw ? 'text' : 'password'} value={pw} onChange={e=>{setPw(e.target.value); setErr(false);}} required autoFocus/>
-              <button
-                type="button"
-                aria-label={showPw ? 'Скрыть пароль' : 'Показать пароль'}
-                onClick={() => setShowPw(v => !v)}
-                style={{
-                  position:'absolute', right:0, top:0, bottom:0,
-                  width:44, display:'flex', alignItems:'center', justifyContent:'center',
-                  background:'none', border:'none', cursor:'pointer',
-                  color: showPw ? '#B68B4A' : '#9AA0A6',
-                  padding:0, transition:'color .15s',
-                }}>
-                {showPw ? (
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                ) : (
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                )}
-              </button>
+    <div className="cp-login-root" style={{
+      minHeight:'100vh', background:CP_CREAM, fontFamily:CP_F,
+      display:'flex', alignItems:'stretch',
+    }}>
+      <style>{`
+        .cp-login-root .cp-login-input::placeholder { color:#9AA0A6; }
+        .cp-login-root .cp-login-input:focus {
+          border-color:${CP_BEIGE_500};
+          box-shadow:${CP_SHADOW_XS}, 0 0 0 4px rgba(196,145,76,0.18);
+        }
+        .cp-login-root .cp-login-submit:hover { background:#A37640; }
+        @media (max-width: 1024px) {
+          .cp-login-root .cp-login-photo { display:none !important; }
+          .cp-login-root .cp-login-pane   { flex:1 !important; }
+        }
+        @media (max-width: 480px) {
+          .cp-login-root .cp-login-pane   { padding:24px 16px !important; }
+          .cp-login-root .cp-login-title  { font-size:24px !important; line-height:32px !important; }
+        }
+      `}</style>
+
+      {/* LEFT — form pane */}
+      <div className="cp-login-pane" style={{
+        flex:1, minWidth:0,
+        display:'flex', alignItems:'center', justifyContent:'center',
+        padding:'24px 32px',
+      }}>
+        <div style={{ width:'100%', maxWidth:360 }}>
+          <h1 className="cp-login-title" style={{
+            fontFamily:CP_FD, fontWeight:700, fontSize:30, lineHeight:'38px',
+            color:CP_GRAY_900, letterSpacing:'-0.01em', margin:'0 0 32px',
+          }}>Вход в личный кабинет менеджера</h1>
+
+          <form onSubmit={submit} noValidate>
+            <div style={{ marginBottom:24 }}>
+              <label htmlFor="mgr-login-pw" style={{
+                display:'block', marginBottom:6,
+                fontFamily:CP_F, fontWeight:500, fontSize:14, lineHeight:'20px',
+                color:CP_TEXT_PRIMARY,
+              }}>Пароль</label>
+              <div style={{ position:'relative' }}>
+                <input
+                  id="mgr-login-pw"
+                  className="cp-login-input"
+                  type={showPw ? 'text' : 'password'}
+                  value={pw}
+                  onChange={e=>{ setPw(e.target.value); setErr(false); }}
+                  placeholder="••••••••"
+                  autoFocus
+                  required
+                  style={{ ...inputStyle, paddingRight:44 }}
+                />
+                <button
+                  type="button"
+                  aria-label={showPw ? 'Скрыть пароль' : 'Показать пароль'}
+                  onClick={() => setShowPw(v => !v)}
+                  style={{
+                    position:'absolute', right:0, top:0, bottom:0,
+                    width:44, display:'flex', alignItems:'center', justifyContent:'center',
+                    background:'none', border:'none', cursor:'pointer',
+                    color: showPw ? CP_BEIGE_500 : CP_TEXT_TERTIARY,
+                    padding:0, transition:'color .15s',
+                  }}>
+                  {showPw ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-          {err && <div style={{ fontFamily:FB, fontSize:12, color:BR, marginBottom:12 }}>Неверный пароль</div>}
-          <button type="submit" disabled={busy} style={{ width:'100%', background:DRK, color:'#fdfaf4', padding:'13px', borderRadius:8, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:15, border:'none', marginTop:4, opacity: busy ? 0.7 : 1, cursor: busy ? 'default' : 'pointer' }}>{busy ? 'Проверка…' : 'Войти'}</button>
-        </form>
-        <div style={{ marginTop:16, textAlign:'center' }}>
-          <span style={{ fontFamily:FB, fontSize:12, color:FG3, cursor:'pointer', textDecoration:'underline' }} onClick={onBack}>← К форме заказа</span>
+
+            {err && (
+              <div style={{
+                fontFamily:CP_F, fontSize:13, lineHeight:'18px',
+                color:CP_ERROR, marginBottom:12,
+              }}>Неверный пароль</div>
+            )}
+
+            <button
+              type="submit"
+              className="cp-login-submit"
+              disabled={busy}
+              style={{
+                width:'100%', height:44, padding:'10px 16px',
+                background: busy ? '#d4a870' : '#B68B4A', border:'1px solid #B68B4A', borderRadius:8,
+                fontFamily:CP_F, fontWeight:600, fontSize:14, lineHeight:'20px',
+                color:'#fff', cursor: busy ? 'not-allowed' : 'pointer',
+                boxShadow:CP_SHADOW_XS,
+                transition:'background .15s ease',
+              }}>
+              {busy ? 'Вход…' : 'Войти'}
+            </button>
+          </form>
         </div>
+      </div>
+
+      {/* RIGHT — photo (border-radius:80px 0 0 80px) */}
+      <div className="cp-login-photo" style={{
+        flex:1, minWidth:0,
+        display:'flex', alignSelf:'stretch',
+      }}>
+        <img
+          src="/assets/login-chick.png"
+          alt=""
+          style={{
+            width:'100%', height:'100%',
+            borderRadius:'80px 0 0 80px',
+            objectFit:'cover',
+            display:'block',
+          }}
+        />
       </div>
     </div>
   );
