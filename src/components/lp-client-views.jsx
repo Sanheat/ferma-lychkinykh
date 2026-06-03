@@ -292,7 +292,7 @@ function LpOrderForm({ counterparty, onHistory, onLogout }) {
 
   useEffectCl(() => {
     getOrders().then(all =>
-      setMyOrdersCount(all.filter(o => o.clientId === counterparty.id || o.clientName === counterparty.name).length)
+      setMyOrdersCount(all.filter(o => (o.clientId === counterparty.id || o.clientName === counterparty.name) && o.status === 'pending').length)
     );
   }, [counterparty, done]);
 
@@ -895,7 +895,7 @@ function LpOrderHistory({ counterparty, onBack, onLogout }) {
     return [1, '...', p - 1, p, p + 1, '...', pageCount];
   }, [pageCount, safePage]);
 
-  const myOrdersCount = allOrders.length;
+  const myOrdersCount = allOrders.filter(o => o.status === 'pending').length;
 
   const toggleExpand = id => {
     setExpanded(prev => {
