@@ -78,12 +78,54 @@ function BnrUploadIco() {
   );
 }
 
+/* Целевой размер баннера — под него подгоняем (cover + центрирование) любое фото */
+const BANNER_IMG_W = 1064;
+const BANNER_IMG_H = 266;
+
+/* Читаем файл, вписываем «по центру» в пропорции баннера и сжимаем в data-URL,
+   чтобы фон корректно адаптировался под любой экран и не раздувал настройки. */
+function processBannerImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = BANNER_IMG_W;
+        canvas.height = BANNER_IMG_H;
+        const ctx = canvas.getContext('2d');
+        // cover: масштабируем по большей стороне и центрируем
+        const scale = Math.max(BANNER_IMG_W / img.width, BANNER_IMG_H / img.height);
+        const dw = img.width * scale;
+        const dh = img.height * scale;
+        const dx = (BANNER_IMG_W - dw) / 2;
+        const dy = (BANNER_IMG_H - dh) / 2;
+        ctx.drawImage(img, dx, dy, dw, dh);
+        try {
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function LpBannerEditor({ adminPwd }) {
-  const { useState, useEffect } = React;
+  const { useState, useEffect, useRef } = React;
 
   const [bannerHidden, setBannerHidden] = useState(false);
-  const [bgTab,   setBgTab]   = useState('color');
-  const [bgColor, setBgColor] = useState(BANNER_BG_COLORS[0]);
+  const [bgTab,    setBgTab]    = useState('color');
+  const [bgColor,  setBgColor]  = useState(BANNER_BG_COLORS[0]);
+  const [bgImage,  setBgImage]  = useState('');
+  const [imgBusy,  setImgBusy]  = useState(false);
+  const [imgErr,   setImgErr]   = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
   const [title,   setTitle]   = useState('');
   const [desc,    setDesc]    = useState('');
   const [badge,   setBadge]   = useState('');
@@ -101,6 +143,7 @@ function LpBannerEditor({ adminPwd }) {
       setBadge(b.badge || '');
       if (b.bg && BANNER_BG_COLORS.includes(b.bg)) setBgColor(b.bg);
       else if (b.bg) setBgColor(b.bg);
+      setBgImage(b.image || '');
       setBgTab(b.image ? 'image' : 'color');
       setBannerHidden(!!b.hidden);
     });
@@ -124,13 +167,57 @@ function LpBannerEditor({ adminPwd }) {
   const DESC_MAX  = 130;
   const BADGE_MAX = 40;
 
-  const activeBannerBg = bgTab === 'color' ? bgColor : CP_BANNER_RED;
+  const hasBgImage = bgTab === 'image' && !!bgImage;
+  const activeBannerBg = hasBgImage ? '#000' : (bgTab === 'color' ? bgColor : CP_BANNER_RED);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!/^image\/(png|jpe?g)$/i.test(file.type)) {
+      setImgErr('Поддерживаются только PNG или JPG');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImgErr('Файл слишком большой — до 10 МБ');
+      return;
+    }
+    setImgErr('');
+    setImgBusy(true);
+    try {
+      const dataUrl = await processBannerImage(file);
+      setBgImage(dataUrl);
+    } catch (e) {
+      console.error('processBannerImage:', e);
+      setImgErr('Не удалось обработать изображение');
+    } finally {
+      setImgBusy(false);
+    }
+  };
+
+  const onInputChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    handleFile(file);
+    e.target.value = ''; // позволяем загрузить тот же файл повторно
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    handleFile(file);
+  };
+
+  const removeImage = () => {
+    setBgImage('');
+    setImgErr('');
+  };
 
   const handleReset = () => {
     setTitle('Свежее мясо птицы — каждую неделю');
     setDesc('Принимаем заявки до 15:00 · отгрузка через 2 рабочих дня');
     setBadge('Ферма Лычкиных');
     setBgColor(BANNER_BG_COLORS[0]);
+    setBgImage('');
+    setImgErr('');
     setBgTab('color');
     setBannerHidden(false);
   };
@@ -144,7 +231,7 @@ function LpBannerEditor({ adminPwd }) {
         subtitle: desc,
         badge,
         bg: bgColor,
-        image: '',
+        image: bgTab === 'image' ? bgImage : '',
         hidden: bannerHidden,
       });
       setSavedAt(Date.now());
@@ -227,6 +314,18 @@ function LpBannerEditor({ adminPwd }) {
           transition: 'background .25s',
           position: 'relative', overflow: 'hidden',
         }}>
+          {!bannerHidden && hasBgImage && (
+            <img
+              src={bgImage}
+              alt=""
+              style={{
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%',
+                objectFit: 'cover', objectPosition: 'center',
+                opacity: 0.75,
+              }}
+            />
+          )}
           {bannerHidden ? (
             <div style={{
               width: '100%', padding: '24px 0',
@@ -238,6 +337,7 @@ function LpBannerEditor({ adminPwd }) {
           ) : (
             <>
               <div style={{
+                position: 'relative',
                 borderRadius: 16, background: '#F9F8F8',
                 display: 'inline-flex', alignItems: 'center',
                 padding: '4px 12px', flexShrink: 0,
@@ -247,16 +347,18 @@ function LpBannerEditor({ adminPwd }) {
                 {badge || 'Бейдж'}
               </div>
 
-              <div style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ position: 'relative', alignSelf: 'stretch', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{
                   fontFamily: CP_F, fontWeight: 600,
                   fontSize: 30, lineHeight: '38px', color: '#fff',
+                  textShadow: hasBgImage ? '0 2px 12px rgba(0,0,0,.35)' : 'none',
                 }}>
                   {title || 'Заголовок баннера'}
                 </div>
                 <div style={{
                   fontFamily: CP_F, fontWeight: 500,
                   fontSize: 14, lineHeight: '20px', color: 'rgba(255,255,255,0.88)',
+                  textShadow: hasBgImage ? '0 1px 8px rgba(0,0,0,.35)' : 'none',
                 }}>
                   {desc || 'Описание баннера'}
                 </div>
@@ -341,51 +443,156 @@ function LpBannerEditor({ adminPwd }) {
           )}
 
           {bgTab === 'image' && (
-            <div style={{ alignSelf: 'stretch', minHeight: 126 }}>
-              <div style={{
-                minHeight: 126, borderRadius: 12, background: '#fff',
-                border: `1px solid ${CP_BORDER_LIGHT}`,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                padding: '16px 24px', boxSizing: 'border-box',
-              }}>
+            <div style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={onInputChange}
+                style={{ display: 'none' }}
+              />
+
+              {bgImage ? (
+                /* Загруженное фото: превью с центрированием + действия */
                 <div style={{
-                  width: '100%', display: 'flex',
-                  flexDirection: 'column', alignItems: 'center',
-                  gap: 12, maxWidth: '100%',
+                  alignSelf: 'stretch', borderRadius: 12, background: '#fff',
+                  border: `1px solid ${CP_BORDER_LIGHT}`, overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
                 }}>
                   <div style={{
-                    width: 40, height: 40, borderRadius: 28, flexShrink: 0,
-                    background: CP_CREAM, border: `1px solid ${CP_BORDER_LIGHT}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: CP_TEXT_TERTIARY,
+                    width: '100%', aspectRatio: `${BANNER_IMG_W} / ${BANNER_IMG_H}`,
+                    background: '#000',
                   }}>
-                    <BnrUploadIco />
+                    <img
+                      src={bgImage}
+                      alt="Загруженное изображение баннера"
+                      style={{
+                        width: '100%', height: '100%',
+                        objectFit: 'cover', objectPosition: 'center',
+                        display: 'block',
+                      }}
+                    />
                   </div>
                   <div style={{
-                    alignSelf: 'stretch', display: 'flex',
-                    flexDirection: 'column', alignItems: 'center', gap: 4,
+                    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12,
+                    padding: '12px 16px', borderTop: `1px solid ${CP_BORDER_LIGHT}`,
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      disabled={imgBusy}
+                      style={{
+                        borderRadius: 8, background: '#fff',
+                        border: `1px solid ${CP_BORDER_INPUT}`, boxShadow: CP_SHADOW_XS,
+                        padding: '8px 14px', cursor: imgBusy ? 'default' : 'pointer',
+                        fontFamily: CP_F, fontWeight: 600, fontSize: 14,
+                        lineHeight: '20px', color: CP_TEXT_SECONDARY,
+                      }}
+                    >
+                      {imgBusy ? 'Обработка…' : 'Заменить изображение'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      disabled={imgBusy}
+                      style={{
+                        borderRadius: 8, background: 'transparent', border: 'none',
+                        padding: '8px 4px', cursor: imgBusy ? 'default' : 'pointer',
+                        fontFamily: CP_F, fontWeight: 600, fontSize: 14,
+                        lineHeight: '20px', color: CP_BANNER_RED,
+                      }}
+                    >
+                      Удалить
+                    </button>
+                    <span style={{
+                      fontFamily: CP_F, fontSize: 12, lineHeight: '18px',
+                      color: CP_TEXT_MUTED, marginLeft: 'auto',
+                    }}>
+                      Фото центрируется и адаптируется под экран
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* Зона загрузки: клик + drag-and-drop */
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      fileInputRef.current && fileInputRef.current.click();
+                    }
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={onDrop}
+                  style={{
+                    minHeight: 126, borderRadius: 12,
+                    background: dragOver ? CP_CREAM : '#fff',
+                    border: `1px ${dragOver ? 'solid' : 'dashed'} ${dragOver ? CP_BEIGE_600 : CP_BORDER_LIGHT}`,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    padding: '16px 24px', boxSizing: 'border-box',
+                    cursor: 'pointer', textAlign: 'center',
+                    transition: 'background .15s, border-color .15s',
+                  }}
+                >
+                  <div style={{
+                    width: '100%', display: 'flex',
+                    flexDirection: 'column', alignItems: 'center',
+                    gap: 12, maxWidth: '100%',
                   }}>
                     <div style={{
-                      display: 'flex', alignItems: 'flex-start',
-                      justifyContent: 'center', gap: 4,
+                      width: 40, height: 40, borderRadius: 28, flexShrink: 0,
+                      background: CP_CREAM, border: `1px solid ${CP_BORDER_LIGHT}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: CP_TEXT_TERTIARY,
                     }}>
-                      <span style={{
-                        fontFamily: CP_F, fontWeight: 600,
-                        fontSize: 14, lineHeight: '20px', color: '#986338',
-                      }}>
-                        Загрузка изображений появится позже
-                      </span>
+                      <BnrUploadIco />
                     </div>
                     <div style={{
-                      fontFamily: CP_F, fontSize: 12,
-                      lineHeight: '18px', color: CP_TEXT_MUTED, textAlign: 'center',
+                      alignSelf: 'stretch', display: 'flex',
+                      flexDirection: 'column', alignItems: 'center', gap: 4,
                     }}>
-                      Пока используйте цветной фон · PNG/JPG 1064×266 px
+                      <div style={{
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: 4, flexWrap: 'wrap',
+                      }}>
+                        <span style={{
+                          fontFamily: CP_F, fontWeight: 600,
+                          fontSize: 14, lineHeight: '20px', color: '#986338',
+                        }}>
+                          {imgBusy ? 'Обработка изображения…' : 'Нажмите, чтобы загрузить'}
+                        </span>
+                        {!imgBusy && (
+                          <span style={{
+                            fontFamily: CP_F, fontWeight: 500,
+                            fontSize: 14, lineHeight: '20px', color: CP_TEXT_MUTED,
+                          }}>
+                            или перетащите файл
+                          </span>
+                        )}
+                      </div>
+                      <div style={{
+                        fontFamily: CP_F, fontSize: 12,
+                        lineHeight: '18px', color: CP_TEXT_MUTED, textAlign: 'center',
+                      }}>
+                        PNG или JPG · рекомендуем {BANNER_IMG_W}×{BANNER_IMG_H} px · до 10 МБ
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {imgErr && (
+                <div style={{
+                  fontFamily: CP_F, fontSize: 13, lineHeight: '18px',
+                  color: CP_BANNER_RED,
+                }}>
+                  {imgErr}
+                </div>
+              )}
             </div>
           )}
         </div>
