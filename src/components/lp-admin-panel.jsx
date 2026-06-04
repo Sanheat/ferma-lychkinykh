@@ -855,13 +855,17 @@ function LpPrintBlanks({ orders, onClose }) {
     const addrLabel = order.deliveryAddress || '';
     const rows = PRODUCTS.map(p => {
       const items = order.items.filter(it => it.product === p.name);
-      let podl='', yashik='', shtuk='', kg='';
+      let podl='', yashik='', shtuk='', kgTotal=0;
       items.forEach(it => {
-        const q = it.qty;
-        if (it.packaging === 'yasik') yashik = (yashik?yashik+'+':'') + q;
-        else if (it.packaging === 'lotok') podl = (podl?podl+'+':'') + q;
-        else if (it.packaging === 'paket') kg = (kg?kg+'+':'') + q;
+        const n = parseFloat(it.qty) || 0;
+        // Считаем счётчики по таре, а в КГ — суммарный вес всех видов тары:
+        // ящик ≈ 14 кг, лоток ≈ 0.9 кг, пакет уже задан в кг.
+        if (it.packaging === 'yasik')      { yashik = (yashik?yashik+'+':'') + it.qty; kgTotal += n * 14;  }
+        else if (it.packaging === 'lotok') { podl   = (podl?podl+'+':'')     + it.qty; kgTotal += n * 0.9; }
+        else if (it.packaging === 'paket') {                                            kgTotal += n;       }
       });
+      const rk = Math.round(kgTotal * 10) / 10;
+      const kg = kgTotal ? (Number.isInteger(rk) ? String(rk) : rk.toFixed(1)) : '';
       return { name: p.blank, podl, yashik, shtuk, kg };
     });
     return {
@@ -907,12 +911,12 @@ function LpPrintBlanks({ orders, onClose }) {
           font-family: 'PT Serif', 'Times New Roman', serif;
           color: #000; overflow: hidden;
         }
-        .lp-blank-driver-strip { border-bottom: 1.2px solid #000; }
-        .lp-blank-driver-row { display: grid; grid-template-columns: 1fr; border-bottom: 1.2px solid #000; }
-        .lp-blank-driver-row:last-child { border-bottom: none; }
+        .lp-blank-driver-strip {
+          border-bottom: 1.2px solid #000;
+          display: grid; grid-template-columns: 1fr 1fr; min-height: 14mm;
+        }
+        .lp-blank-driver-left { border-right: 1.2px solid #000; }
         .lp-blank-driver-label { padding: 1.4mm 2mm; font-weight: 700; font-size: 11pt; font-family: 'PT Serif', serif; }
-        .lp-blank-driver-write { display: grid; grid-template-columns: 1fr 1fr; height: 7mm; }
-        .lp-blank-driver-write > div:first-child { border-right: 1.2px solid #000; }
         .lp-blank-meta {
           padding: 1mm 2mm; font-size: 7.5pt; color:#333;
           border-bottom: 1.2px solid #000;
@@ -932,6 +936,8 @@ function LpPrintBlanks({ orders, onClose }) {
         .lp-blank-head > div { font-weight: 700; justify-content: center; text-align: center; min-height: 14mm; }
         .lp-blank-head > div:first-child { justify-content: flex-start; padding-left: 2mm; }
         .lp-blank-head > div:last-child, .lp-blank-row > div:last-child { border-right: none; }
+        /* Гарантированный вертикальный разделитель между «КГ» и «Накл. №» */
+        .lp-blank-head > div.lp-col-kg, .lp-blank-row > div.lp-col-kg { border-right: 1.2px solid #000; }
         .lp-blank-row { min-height: 5.4mm; }
         .lp-blank-row .name { font-weight: 700; font-size: 8.5pt; font-family: 'PT Sans', Arial, sans-serif; letter-spacing: -0.01em; }
         .lp-blank-row .qty { justify-content: center; font-weight: 700; color: #b6231b; font-family: 'PT Sans', Arial, sans-serif; }
@@ -963,11 +969,10 @@ function LpPrintBlanks({ orders, onClose }) {
             return (
               <div key={bi} className="lp-blank">
                 <div className="lp-blank-driver-strip">
-                  <div className="lp-blank-driver-label">Водитель:</div>
-                  <div className="lp-blank-driver-write">
-                    <div></div>
-                    <div></div>
+                  <div className="lp-blank-driver-left">
+                    <div className="lp-blank-driver-label">Водитель:</div>
                   </div>
+                  <div className="lp-blank-driver-right"></div>
                 </div>
                 <div className="lp-blank-meta">
                   <span>Контрагент: <b>{b.cpName}</b> · {b.addr}</span>
@@ -980,7 +985,7 @@ function LpPrintBlanks({ orders, onClose }) {
                   <div className="lp-blank-vert">П О Д Л</div>
                   <div className="lp-blank-vert">Я Щ И К</div>
                   <div className="lp-blank-vert">Ш Т У К</div>
-                  <div className="lp-blank-vert">К Г</div>
+                  <div className="lp-blank-vert lp-col-kg">К Г</div>
                   <div className="lp-blank-vert">Накл. №</div>
                 </div>
                 {b.rows.map((r, ri) => (
@@ -989,7 +994,7 @@ function LpPrintBlanks({ orders, onClose }) {
                     <div className="qty">{r.podl}</div>
                     <div className="qty">{r.yashik}</div>
                     <div className="qty">{r.shtuk}</div>
-                    <div className="qty">{r.kg}</div>
+                    <div className="qty lp-col-kg">{r.kg}</div>
                     <div></div>
                   </div>
                 ))}
