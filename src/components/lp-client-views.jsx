@@ -213,6 +213,7 @@ function LpClientLogin({ onLogin, onAdmin }) {
 
 /* ─────────────  BANNER (client read-only)  ───────────── */
 function LpClientBanner({ banner }) {
+  if (banner.hidden) return null;
   const hasImage = !!banner.image;
   const bg = hasImage ? '#000' : (banner.bg || CP_BANNER_RED);
   return (
@@ -333,9 +334,11 @@ function LpOrderForm({ counterparty, onHistory, onLogout }) {
         display:'flex', flexDirection:'column', gap:32,
         borderRadius:'40px 0 0 0', background:'#fff',
       }}>
-        <div className="cp-banner-wrap" style={{ padding:'0 32px' }}>
-          <LpClientBanner banner={banner}/>
-        </div>
+        {!banner.hidden && (
+          <div className="cp-banner-wrap" style={{ padding:'0 32px' }}>
+            <LpClientBanner banner={banner}/>
+          </div>
+        )}
 
         <div className="cp-form-container" style={{ display:'flex', alignItems:'flex-start', padding:'0 32px', gap:32 }}>
 
