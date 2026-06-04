@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import * as XLSX from 'xlsx-js-style';
 import {
   CP_F, CP_SHADOW_SM,
@@ -876,13 +877,21 @@ function LpPrintBlanks({ orders, onClose }) {
   const pages = [];
   for (let i=0; i<blanks.length; i+=2) pages.push([blanks[i], blanks[i+1]]);
 
-  return (
+  return ReactDOM.createPortal(
     <div className="lp-print-root" style={{ position:'fixed', inset:0, background:'#666', zIndex:500, overflowY:'auto' }}>
       <style>{`
         @page { size: A4 landscape; margin: 6mm; }
         @media print {
           html, body { background: white !important; }
-          .lp-print-root { background: white !important; position: static !important; }
+          /* В печать уходят ТОЛЬКО бланки: всё остальное приложение скрываем */
+          body > *:not(.lp-print-root) { display: none !important; }
+          .lp-print-root {
+            background: white !important;
+            position: static !important;
+            inset: auto !important;
+            overflow: visible !important;
+            width: auto !important; height: auto !important;
+          }
           .lp-print-toolbar { display: none !important; }
           .lp-blank-page { box-shadow: none !important; margin: 0 !important; page-break-after: always; }
           .lp-blank-page:last-child { page-break-after: auto; }
@@ -989,7 +998,8 @@ function LpPrintBlanks({ orders, onClose }) {
           })}
         </div>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }
 
