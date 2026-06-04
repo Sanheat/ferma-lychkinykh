@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import * as XLSX from 'xlsx-js-style';
 import {
   CP_F, CP_SHADOW_SM,
@@ -58,6 +59,14 @@ const MoIco = {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
   ),
 };
+
+/* Доступные статусы заявки для смены (ключ, подпись, цвет точки) */
+const ORDER_STAT = [
+  ['pending',   'В обработке', '#2E90FA'],
+  ['accepted',  'Принята',     '#12B76A'],
+  ['shipped',   'Отгружена',   '#F79009'],
+  ['cancelled', 'Отменена',    '#F04438'],
+];
 
 function LpAdminOrders({ adminPwd, onPrint }) {
   const [orders, setOrders] = useStateAo([]);
@@ -151,6 +160,21 @@ function LpAdminOrders({ adminPwd, onPrint }) {
     setSelected(p => p?.id === id ? { ...p, status: st } : p);
     setStatus(id, st).catch(console.error);
   };
+
+  // Заявки под действие: выбранные галочками, иначе — весь текущий раздел (фильтр/вкладка)
+  const selectedOrders = useMemoAo(() => orders.filter(o => checked[o.id]), [orders, checked]);
+  const hasSelection = selectedOrders.length > 0;
+  const targetOrders = hasSelection ? selectedOrders : filtered;
+
+  const bulkStatus = (st) => {
+    const ids = selectedOrders.map(o => o.id);
+    if (!ids.length) return;
+    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, status: st } : o));
+    setSelected(p => p && ids.includes(p.id) ? { ...p, status: st } : p);
+    ids.forEach(id => setStatus(id, st).catch(console.error));
+  };
+
+  const clearSelection = () => { setChecked({}); setAllChecked(false); };
   const onEditSave = updated => {
     setOrders(p => p.map(o => o.id === updated.id ? updated : o));
     setEditing(null); setSelected(updated);
@@ -174,7 +198,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
 
     // Столбцы — заявки: над контрагентом дата отгрузки, ещё выше номер заявки.
     // Заявки одного контрагента идут рядом, сортировка по дате отгрузки.
-    const cols = filtered.map(o => ({
+    const cols = targetOrders.map(o => ({
       num: o.id,
       client: o.clientName,
       rawDate: o.shipmentDate || '',
@@ -313,15 +337,17 @@ function LpAdminOrders({ adminPwd, onPrint }) {
               boxShadow: MO_SHADOW_XS, cursor: 'pointer', whiteSpace: 'nowrap',
               fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE,
             }}>
-              <span style={{ display: 'flex', color: MO_TEXT_VALUE }}>{MoIco.printer}</span>Excel
+              <span style={{ display: 'flex', color: MO_TEXT_VALUE }}>{MoIco.printer}</span>
+              Excel{hasSelection ? ` (${selectedOrders.length})` : ''}
             </button>
-            <button type="button" onClick={() => onPrint(filtered)} style={{
+            <button type="button" onClick={() => onPrint(targetOrders)} style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '10px 16px', borderRadius: 8, background: MO_CREAM_100, border: `1px solid ${MO_CREAM_50}`,
               cursor: 'pointer', whiteSpace: 'nowrap',
               fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_BRAND_ACTIVE,
             }}>
-              <span style={{ display: 'flex', color: MO_BRAND_ACTIVE }}>{MoIco.printer}</span>Бланки в производство
+              <span style={{ display: 'flex', color: MO_BRAND_ACTIVE }}>{MoIco.printer}</span>
+              Бланки в производство{hasSelection ? ` (${selectedOrders.length})` : ''}
             </button>
           </div>
         </div>
@@ -431,6 +457,44 @@ function LpAdminOrders({ adminPwd, onPrint }) {
           </div>
         </div>
       </div>
+
+      {hasSelection && (
+        <div className="mo-pad" style={{ padding: '0 32px' }}>
+          <div className="mo-bulkbar" style={{
+            display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+            padding: '12px 16px', borderRadius: 12,
+            background: MO_CREAM_50, border: `1px solid ${MO_CREAM_100}`,
+          }}>
+            <span style={{ fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_BRAND_ACTIVE, whiteSpace: 'nowrap' }}>
+              Выбрано: {selectedOrders.length}
+            </span>
+            <span style={{ fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE, whiteSpace: 'nowrap' }}>
+              Сменить статус:
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', border: '1px solid #ADAAAA', borderRadius: 8, overflow: 'hidden' }}>
+              {ORDER_STAT.map(([k, l, dc], i) => (
+                <button key={k} type="button" onClick={() => bulkStatus(k)} style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '8px 14px', cursor: 'pointer', background: '#fff', border: 'none',
+                  borderRight: i < ORDER_STAT.length - 1 ? '1px solid #ADAAAA' : 'none',
+                  fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE,
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = MO_BG_HEAD}
+                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: dc, flexShrink: 0, display: 'inline-block' }} />
+                  {l}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={clearSelection} style={{
+              marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_TEXT_TAB, whiteSpace: 'nowrap',
+            }}>
+              Снять выделение
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mo-pad" style={{ padding: '0 32px' }}>
         <div style={{
@@ -614,12 +678,7 @@ function LpAdminOrderDetail({ order, onClose, onStatus, onEdit, onPrint }) {
     return () => mq.removeEventListener('change', upd);
   }, []);
 
-  const STAT = [
-    ['pending',   'В обработке', '#2E90FA'],
-    ['accepted',  'Принята',     '#12B76A'],
-    ['shipped',   'Отгружена',   '#F79009'],
-    ['cancelled', 'Отменена',    '#F04438'],
-  ];
+  const STAT = ORDER_STAT;
   const isCur = k => order.status === k || (k === 'cancelled' && order.status === 'archive');
 
   const StatusGroup = () => (
@@ -854,13 +913,17 @@ function LpPrintBlanks({ orders, onClose }) {
     const addrLabel = order.deliveryAddress || '';
     const rows = PRODUCTS.map(p => {
       const items = order.items.filter(it => it.product === p.name);
-      let podl='', yashik='', shtuk='', kg='';
+      let podl='', yashik='', shtuk='', kgTotal=0;
       items.forEach(it => {
-        const q = it.qty;
-        if (it.packaging === 'yasik') yashik = (yashik?yashik+'+':'') + q;
-        else if (it.packaging === 'lotok') podl = (podl?podl+'+':'') + q;
-        else if (it.packaging === 'paket') kg = (kg?kg+'+':'') + q;
+        const n = parseFloat(it.qty) || 0;
+        // Считаем счётчики по таре, а в КГ — суммарный вес всех видов тары:
+        // ящик ≈ 14 кг, лоток ≈ 0.9 кг, пакет уже задан в кг.
+        if (it.packaging === 'yasik')      { yashik = (yashik?yashik+'+':'') + it.qty; kgTotal += n * 14;  }
+        else if (it.packaging === 'lotok') { podl   = (podl?podl+'+':'')     + it.qty; kgTotal += n * 0.9; }
+        else if (it.packaging === 'paket') {                                            kgTotal += n;       }
       });
+      const rk = Math.round(kgTotal * 10) / 10;
+      const kg = kgTotal ? (Number.isInteger(rk) ? String(rk) : rk.toFixed(1)) : '';
       return { name: p.blank, podl, yashik, shtuk, kg };
     });
     return {
@@ -876,13 +939,21 @@ function LpPrintBlanks({ orders, onClose }) {
   const pages = [];
   for (let i=0; i<blanks.length; i+=2) pages.push([blanks[i], blanks[i+1]]);
 
-  return (
+  return ReactDOM.createPortal(
     <div className="lp-print-root" style={{ position:'fixed', inset:0, background:'#666', zIndex:500, overflowY:'auto' }}>
       <style>{`
         @page { size: A4 landscape; margin: 6mm; }
         @media print {
           html, body { background: white !important; }
-          .lp-print-root { background: white !important; position: static !important; }
+          /* В печать уходят ТОЛЬКО бланки: всё остальное приложение скрываем */
+          body > *:not(.lp-print-root) { display: none !important; }
+          .lp-print-root {
+            background: white !important;
+            position: static !important;
+            inset: auto !important;
+            overflow: visible !important;
+            width: auto !important; height: auto !important;
+          }
           .lp-print-toolbar { display: none !important; }
           .lp-blank-page { box-shadow: none !important; margin: 0 !important; page-break-after: always; }
           .lp-blank-page:last-child { page-break-after: auto; }
@@ -898,12 +969,12 @@ function LpPrintBlanks({ orders, onClose }) {
           font-family: 'PT Serif', 'Times New Roman', serif;
           color: #000; overflow: hidden;
         }
-        .lp-blank-driver-strip { border-bottom: 1.2px solid #000; }
-        .lp-blank-driver-row { display: grid; grid-template-columns: 1fr; border-bottom: 1.2px solid #000; }
-        .lp-blank-driver-row:last-child { border-bottom: none; }
+        .lp-blank-driver-strip {
+          border-bottom: 1.2px solid #000;
+          display: grid; grid-template-columns: 1fr 1fr; min-height: 14mm;
+        }
+        .lp-blank-driver-left { border-right: 1.2px solid #000; }
         .lp-blank-driver-label { padding: 1.4mm 2mm; font-weight: 700; font-size: 11pt; font-family: 'PT Serif', serif; }
-        .lp-blank-driver-write { display: grid; grid-template-columns: 1fr 1fr; height: 7mm; }
-        .lp-blank-driver-write > div:first-child { border-right: 1.2px solid #000; }
         .lp-blank-meta {
           padding: 1mm 2mm; font-size: 7.5pt; color:#333;
           border-bottom: 1.2px solid #000;
@@ -923,6 +994,8 @@ function LpPrintBlanks({ orders, onClose }) {
         .lp-blank-head > div { font-weight: 700; justify-content: center; text-align: center; min-height: 14mm; }
         .lp-blank-head > div:first-child { justify-content: flex-start; padding-left: 2mm; }
         .lp-blank-head > div:last-child, .lp-blank-row > div:last-child { border-right: none; }
+        /* Гарантированный вертикальный разделитель между «КГ» и «Накл. №» */
+        .lp-blank-head > div.lp-col-kg, .lp-blank-row > div.lp-col-kg { border-right: 1.2px solid #000; }
         .lp-blank-row { min-height: 5.4mm; }
         .lp-blank-row .name { font-weight: 700; font-size: 8.5pt; font-family: 'PT Sans', Arial, sans-serif; letter-spacing: -0.01em; }
         .lp-blank-row .qty { justify-content: center; font-weight: 700; color: #b6231b; font-family: 'PT Sans', Arial, sans-serif; }
@@ -954,11 +1027,10 @@ function LpPrintBlanks({ orders, onClose }) {
             return (
               <div key={bi} className="lp-blank">
                 <div className="lp-blank-driver-strip">
-                  <div className="lp-blank-driver-label">Водитель:</div>
-                  <div className="lp-blank-driver-write">
-                    <div></div>
-                    <div></div>
+                  <div className="lp-blank-driver-left">
+                    <div className="lp-blank-driver-label">Водитель:</div>
                   </div>
+                  <div className="lp-blank-driver-right"></div>
                 </div>
                 <div className="lp-blank-meta">
                   <span>Контрагент: <b>{b.cpName}</b> · {b.addr}</span>
@@ -971,7 +1043,7 @@ function LpPrintBlanks({ orders, onClose }) {
                   <div className="lp-blank-vert">П О Д Л</div>
                   <div className="lp-blank-vert">Я Щ И К</div>
                   <div className="lp-blank-vert">Ш Т У К</div>
-                  <div className="lp-blank-vert">К Г</div>
+                  <div className="lp-blank-vert lp-col-kg">К Г</div>
                   <div className="lp-blank-vert">Накл. №</div>
                 </div>
                 {b.rows.map((r, ri) => (
@@ -980,7 +1052,7 @@ function LpPrintBlanks({ orders, onClose }) {
                     <div className="qty">{r.podl}</div>
                     <div className="qty">{r.yashik}</div>
                     <div className="qty">{r.shtuk}</div>
-                    <div className="qty">{r.kg}</div>
+                    <div className="qty lp-col-kg">{r.kg}</div>
                     <div></div>
                   </div>
                 ))}
@@ -989,7 +1061,8 @@ function LpPrintBlanks({ orders, onClose }) {
           })}
         </div>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }
 
