@@ -78,9 +78,13 @@ function BnrUploadIco() {
   );
 }
 
-/* Целевой размер баннера — под него подгоняем (cover + центрирование) любое фото */
+/* Целевой размер баннера — под него подгоняем (cover + центрирование) любое фото.
+   Рендерим с запасом по плотности пикселей (×2), чтобы фон оставался резким
+   на Retina/HiDPI-экранах и не «мылился». */
 const BANNER_IMG_W = 1064;
 const BANNER_IMG_H = 266;
+const BANNER_IMG_SCALE = 2;
+const BANNER_JPEG_QUALITY = 0.92;
 
 /* Читаем файл, вписываем «по центру» в пропорции баннера и сжимаем в data-URL,
    чтобы фон корректно адаптировался под любой экран и не раздувал настройки. */
@@ -92,19 +96,29 @@ function processBannerImage(file) {
       const img = new Image();
       img.onerror = () => reject(new Error('decode'));
       img.onload = () => {
+        // Не увеличиваем плотность сверх исходного фото — апскейл только мылит.
+        // 1/cover — сколько «плотности» реально есть в исходнике относительно базы.
+        const cover = Math.max(BANNER_IMG_W / img.width, BANNER_IMG_H / img.height);
+        const density = Math.min(BANNER_IMG_SCALE, Math.max(1, 1 / cover));
+        const cw = Math.round(BANNER_IMG_W * density);
+        const ch = Math.round(BANNER_IMG_H * density);
+
         const canvas = document.createElement('canvas');
-        canvas.width = BANNER_IMG_W;
-        canvas.height = BANNER_IMG_H;
+        canvas.width = cw;
+        canvas.height = ch;
         const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
         // cover: масштабируем по большей стороне и центрируем
-        const scale = Math.max(BANNER_IMG_W / img.width, BANNER_IMG_H / img.height);
+        const scale = Math.max(cw / img.width, ch / img.height);
         const dw = img.width * scale;
         const dh = img.height * scale;
-        const dx = (BANNER_IMG_W - dw) / 2;
-        const dy = (BANNER_IMG_H - dh) / 2;
+        const dx = (cw - dw) / 2;
+        const dy = (ch - dh) / 2;
         ctx.drawImage(img, dx, dy, dw, dh);
         try {
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          resolve(canvas.toDataURL('image/jpeg', BANNER_JPEG_QUALITY));
         } catch (e) {
           reject(e);
         }
