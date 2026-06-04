@@ -60,6 +60,14 @@ const MoIco = {
   ),
 };
 
+/* Доступные статусы заявки для смены (ключ, подпись, цвет точки) */
+const ORDER_STAT = [
+  ['pending',   'В обработке', '#2E90FA'],
+  ['accepted',  'Принята',     '#12B76A'],
+  ['shipped',   'Отгружена',   '#F79009'],
+  ['cancelled', 'Отменена',    '#F04438'],
+];
+
 function LpAdminOrders({ adminPwd, onPrint }) {
   const [orders, setOrders] = useStateAo([]);
   const [tab, setTab] = useStateAo('all');
@@ -152,6 +160,21 @@ function LpAdminOrders({ adminPwd, onPrint }) {
     setSelected(p => p?.id === id ? { ...p, status: st } : p);
     setStatus(id, st).catch(console.error);
   };
+
+  // Заявки под действие: выбранные галочками, иначе — весь текущий раздел (фильтр/вкладка)
+  const selectedOrders = useMemoAo(() => orders.filter(o => checked[o.id]), [orders, checked]);
+  const hasSelection = selectedOrders.length > 0;
+  const targetOrders = hasSelection ? selectedOrders : filtered;
+
+  const bulkStatus = (st) => {
+    const ids = selectedOrders.map(o => o.id);
+    if (!ids.length) return;
+    setOrders(p => p.map(o => ids.includes(o.id) ? { ...o, status: st } : o));
+    setSelected(p => p && ids.includes(p.id) ? { ...p, status: st } : p);
+    ids.forEach(id => setStatus(id, st).catch(console.error));
+  };
+
+  const clearSelection = () => { setChecked({}); setAllChecked(false); };
   const onEditSave = updated => {
     setOrders(p => p.map(o => o.id === updated.id ? updated : o));
     setEditing(null); setSelected(updated);
@@ -175,7 +198,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
 
     // Столбцы — заявки: над контрагентом дата отгрузки, ещё выше номер заявки.
     // Заявки одного контрагента идут рядом, сортировка по дате отгрузки.
-    const cols = filtered.map(o => ({
+    const cols = targetOrders.map(o => ({
       num: o.id,
       client: o.clientName,
       rawDate: o.shipmentDate || '',
@@ -314,15 +337,17 @@ function LpAdminOrders({ adminPwd, onPrint }) {
               boxShadow: MO_SHADOW_XS, cursor: 'pointer', whiteSpace: 'nowrap',
               fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE,
             }}>
-              <span style={{ display: 'flex', color: MO_TEXT_VALUE }}>{MoIco.printer}</span>Excel
+              <span style={{ display: 'flex', color: MO_TEXT_VALUE }}>{MoIco.printer}</span>
+              Excel{hasSelection ? ` (${selectedOrders.length})` : ''}
             </button>
-            <button type="button" onClick={() => onPrint(filtered)} style={{
+            <button type="button" onClick={() => onPrint(targetOrders)} style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '10px 16px', borderRadius: 8, background: MO_CREAM_100, border: `1px solid ${MO_CREAM_50}`,
               cursor: 'pointer', whiteSpace: 'nowrap',
               fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_BRAND_ACTIVE,
             }}>
-              <span style={{ display: 'flex', color: MO_BRAND_ACTIVE }}>{MoIco.printer}</span>Бланки в производство
+              <span style={{ display: 'flex', color: MO_BRAND_ACTIVE }}>{MoIco.printer}</span>
+              Бланки в производство{hasSelection ? ` (${selectedOrders.length})` : ''}
             </button>
           </div>
         </div>
@@ -432,6 +457,44 @@ function LpAdminOrders({ adminPwd, onPrint }) {
           </div>
         </div>
       </div>
+
+      {hasSelection && (
+        <div className="mo-pad" style={{ padding: '0 32px' }}>
+          <div className="mo-bulkbar" style={{
+            display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+            padding: '12px 16px', borderRadius: 12,
+            background: MO_CREAM_50, border: `1px solid ${MO_CREAM_100}`,
+          }}>
+            <span style={{ fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_BRAND_ACTIVE, whiteSpace: 'nowrap' }}>
+              Выбрано: {selectedOrders.length}
+            </span>
+            <span style={{ fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE, whiteSpace: 'nowrap' }}>
+              Сменить статус:
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', border: '1px solid #ADAAAA', borderRadius: 8, overflow: 'hidden' }}>
+              {ORDER_STAT.map(([k, l, dc], i) => (
+                <button key={k} type="button" onClick={() => bulkStatus(k)} style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '8px 14px', cursor: 'pointer', background: '#fff', border: 'none',
+                  borderRight: i < ORDER_STAT.length - 1 ? '1px solid #ADAAAA' : 'none',
+                  fontFamily: CP_F, fontWeight: 500, fontSize: 14, lineHeight: '20px', color: MO_TEXT_VALUE,
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = MO_BG_HEAD}
+                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: dc, flexShrink: 0, display: 'inline-block' }} />
+                  {l}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={clearSelection} style={{
+              marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: CP_F, fontWeight: 600, fontSize: 14, lineHeight: '20px', color: MO_TEXT_TAB, whiteSpace: 'nowrap',
+            }}>
+              Снять выделение
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mo-pad" style={{ padding: '0 32px' }}>
         <div style={{
@@ -615,12 +678,7 @@ function LpAdminOrderDetail({ order, onClose, onStatus, onEdit, onPrint }) {
     return () => mq.removeEventListener('change', upd);
   }, []);
 
-  const STAT = [
-    ['pending',   'В обработке', '#2E90FA'],
-    ['accepted',  'Принята',     '#12B76A'],
-    ['shipped',   'Отгружена',   '#F79009'],
-    ['cancelled', 'Отменена',    '#F04438'],
-  ];
+  const STAT = ORDER_STAT;
   const isCur = k => order.status === k || (k === 'cancelled' && order.status === 'archive');
 
   const StatusGroup = () => (
