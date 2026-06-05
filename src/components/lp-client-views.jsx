@@ -570,35 +570,21 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
 
   const productOptions = PRODUCTS.map(p => p.name);
 
+  // Счётная тара (ящик, лоток): шаг кнопками. Весовая (пакет) — нативное поле ниже.
   const dec = () => {
-    if (isKg) {
-      const v = Math.max(0.1, (parseFloat(item.qty||'0') - 0.5));
-      onChange(idx, { ...item, qty: String(+v.toFixed(1)) });
-    } else {
-      const cur = parseInt(item.qty||String(step), 10) || step;
-      onChange(idx, { ...item, qty: String(Math.max(step, cur - step)) });
-    }
+    const cur = parseInt(item.qty||String(step), 10) || step;
+    onChange(idx, { ...item, qty: String(Math.max(step, cur - step)) });
   };
   const inc = () => {
-    if (isKg) {
-      const v = (parseFloat(item.qty||'0') + 0.5);
-      onChange(idx, { ...item, qty: String(+v.toFixed(1)) });
-    } else {
-      const cur = parseInt(item.qty||String(step), 10) || step;
-      onChange(idx, { ...item, qty: String(cur + step) });
-    }
+    const cur = parseInt(item.qty||String(step), 10) || step;
+    onChange(idx, { ...item, qty: String(cur + step) });
   };
 
   // Привести введённое вручную значение к допустимому: счётная тара — кратно шагу
   const normalizeQty = () => {
-    if (isKg) {
-      const v = Math.max(0.1, parseFloat(item.qty||'0') || 0.1);
-      onChange(idx, { ...item, qty: String(+v.toFixed(1)) });
-    } else {
-      const n = parseInt(item.qty||'0', 10) || 0;
-      const snapped = Math.max(step, Math.round(n / step) * step);
-      onChange(idx, { ...item, qty: String(snapped) });
-    }
+    const n = parseInt(item.qty||'0', 10) || 0;
+    const snapped = Math.max(step, Math.round(n / step) * step);
+    onChange(idx, { ...item, qty: String(snapped) });
   };
 
   const buildSelectStyle = active => ({
@@ -637,6 +623,21 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                 })}
               </select>
             </div>
+            {isKg ? (
+              <input
+                type="number" min="0.1" step="0.1" placeholder="кг"
+                value={item.qty}
+                onChange={e=>onChange(idx, { ...item, qty: e.target.value })}
+                style={{
+                  width:96, boxSizing:'border-box', height:48,
+                  padding:'12px 14px',
+                  border:`1px solid ${CP_BORDER_CONTROL}`, borderRadius:8,
+                  background:'#fff', outline:'none', textAlign:'center',
+                  fontFamily:CP_F, fontSize:14, lineHeight:'20px',
+                  fontWeight:600, color:CP_TEXT_SECONDARY, flexShrink:0,
+                }}
+              />
+            ) : (
             <div style={{
               display:'flex', alignItems:'flex-start',
               border:`1px solid ${CP_BORDER_CONTROL}`, borderRadius:8, overflow:'hidden',
@@ -678,6 +679,7 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                 {CpIco.plus}
               </button>
             </div>
+            )}
           </div>
         </div>
         <button type="button" onClick={()=>onRemove(idx)} title="Удалить"
