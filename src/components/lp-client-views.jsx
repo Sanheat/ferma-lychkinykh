@@ -90,7 +90,12 @@ function LpClientLogin({ onLogin, onAdmin }) {
             fontFamily:CP_F, fontSize:14, lineHeight:'20px',
             color:CP_TEXT_MUTED, margin:'0 0 32px',
           }}>
-            Введите логин и пароль, которые вам предоставил менеджер
+            Введите логин и пароль, которые вам предоставил{' '}
+            <span
+              onClick={onAdmin}
+              style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}>
+              менеджер
+            </span>
           </p>
 
           <form onSubmit={submit} noValidate>
