@@ -90,7 +90,12 @@ function LpClientLogin({ onLogin, onAdmin }) {
             fontFamily:CP_F, fontSize:14, lineHeight:'20px',
             color:CP_TEXT_MUTED, margin:'0 0 32px',
           }}>
-            Введите логин и пароль, которые вам предоставил менеджер
+            Введите логин и пароль, которые вам предоставил{' '}
+            <span
+              onClick={onAdmin}
+              style={{ color:'inherit', textDecoration:'none', cursor:'pointer' }}>
+              менеджер
+            </span>
           </p>
 
           <form onSubmit={submit} noValidate>
@@ -123,12 +128,16 @@ function LpClientLogin({ onLogin, onAdmin }) {
                 <input
                   id="cp-login-pw"
                   className="cp-login-input"
-                  type={showPw ? 'text' : 'password'}
+                  type="text"
                   value={pw}
                   onChange={e=>{ setPw(e.target.value); setErr(''); }}
                   placeholder="••••••••"
                   required
-                  style={{ ...inputStyle, paddingRight:44 }}
+                  autoComplete="current-password"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  style={{ ...inputStyle, paddingRight:44, ...(showPw ? {} : { WebkitTextSecurity:'disc', textSecurity:'disc' }) }}
                 />
                 <button
                   type="button"
@@ -565,23 +574,21 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
 
   const productOptions = PRODUCTS.map(p => p.name);
 
+  // Счётная тара (ящик, лоток): шаг кнопками. Весовая (пакет) — нативное поле ниже.
   const dec = () => {
-    if (isKg) {
-      const v = Math.max(0.1, (parseFloat(item.qty||'0') - 0.5));
-      onChange(idx, { ...item, qty: String(+v.toFixed(1)) });
-    } else {
-      const cur = parseInt(item.qty||String(step), 10) || step;
-      onChange(idx, { ...item, qty: String(Math.max(step, cur - step)) });
-    }
+    const cur = parseInt(item.qty||String(step), 10) || step;
+    onChange(idx, { ...item, qty: String(Math.max(step, cur - step)) });
   };
   const inc = () => {
-    if (isKg) {
-      const v = (parseFloat(item.qty||'0') + 0.5);
-      onChange(idx, { ...item, qty: String(+v.toFixed(1)) });
-    } else {
-      const cur = parseInt(item.qty||String(step), 10) || step;
-      onChange(idx, { ...item, qty: String(cur + step) });
-    }
+    const cur = parseInt(item.qty||String(step), 10) || step;
+    onChange(idx, { ...item, qty: String(cur + step) });
+  };
+
+  // Привести введённое вручную значение к допустимому: счётная тара — кратно шагу
+  const normalizeQty = () => {
+    const n = parseInt(item.qty||'0', 10) || 0;
+    const snapped = Math.max(step, Math.round(n / step) * step);
+    onChange(idx, { ...item, qty: String(snapped) });
   };
 
   const buildSelectStyle = active => ({
@@ -620,6 +627,21 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                 })}
               </select>
             </div>
+            {isKg ? (
+              <input
+                type="number" min="0.1" step="0.1" placeholder="кг"
+                value={item.qty}
+                onChange={e=>onChange(idx, { ...item, qty: e.target.value })}
+                style={{
+                  width:96, boxSizing:'border-box', height:48,
+                  padding:'12px 14px',
+                  border:`1px solid ${CP_BORDER_CONTROL}`, borderRadius:8,
+                  background:'#fff', outline:'none', textAlign:'center',
+                  fontFamily:CP_F, fontSize:14, lineHeight:'20px',
+                  fontWeight:600, color:CP_TEXT_SECONDARY, flexShrink:0,
+                }}
+              />
+            ) : (
             <div style={{
               display:'flex', alignItems:'flex-start',
               border:`1px solid ${CP_BORDER_CONTROL}`, borderRadius:8, overflow:'hidden',
@@ -643,6 +665,7 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                     const v = e.target.value.replace(',', '.').replace(/[^0-9.]/g,'');
                     onChange(idx, { ...item, qty: v });
                   }}
+                  onBlur={normalizeQty}
                   style={{
                     width:30, padding:0, border:'none', outline:'none',
                     textAlign:'center', background:'transparent',
@@ -660,6 +683,7 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                 {CpIco.plus}
               </button>
             </div>
+            )}
           </div>
         </div>
         <button type="button" onClick={()=>onRemove(idx)} title="Удалить"
