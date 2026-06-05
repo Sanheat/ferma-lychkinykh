@@ -589,6 +589,18 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
     }
   };
 
+  // Привести введённое вручную значение к допустимому: счётная тара — кратно шагу
+  const normalizeQty = () => {
+    if (isKg) {
+      const v = Math.max(0.1, parseFloat(item.qty||'0') || 0.1);
+      onChange(idx, { ...item, qty: String(+v.toFixed(1)) });
+    } else {
+      const n = parseInt(item.qty||'0', 10) || 0;
+      const snapped = Math.max(step, Math.round(n / step) * step);
+      onChange(idx, { ...item, qty: String(snapped) });
+    }
+  };
+
   const buildSelectStyle = active => ({
     width:'100%', padding:'10px 36px 10px 14px',
     fontFamily:CP_F, fontSize:16, lineHeight:'24px',
@@ -648,6 +660,7 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                     const v = e.target.value.replace(',', '.').replace(/[^0-9.]/g,'');
                     onChange(idx, { ...item, qty: v });
                   }}
+                  onBlur={normalizeQty}
                   style={{
                     width:30, padding:0, border:'none', outline:'none',
                     textAlign:'center', background:'transparent',
