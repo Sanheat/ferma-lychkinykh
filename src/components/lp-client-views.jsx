@@ -128,12 +128,16 @@ function LpClientLogin({ onLogin, onAdmin }) {
                 <input
                   id="cp-login-pw"
                   className="cp-login-input"
-                  type={showPw ? 'text' : 'password'}
+                  type="text"
                   value={pw}
                   onChange={e=>{ setPw(e.target.value); setErr(''); }}
                   placeholder="••••••••"
                   required
-                  style={{ ...inputStyle, paddingRight:44 }}
+                  autoComplete="current-password"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  style={{ ...inputStyle, paddingRight:44, ...(showPw ? {} : { WebkitTextSecurity:'disc', textSecurity:'disc' }) }}
                 />
                 <button
                   type="button"
