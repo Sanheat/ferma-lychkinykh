@@ -72,7 +72,9 @@ function LpAdminOrders({ adminPwd, onPrint }) {
   const [orders, setOrders] = useStateAo([]);
   const [tab, setTab] = useStateAo('all');
   const [search, setSearch] = useStateAo('');
-  const [clientFilter, setClientFilter] = useStateAo('');
+  const [created, setCreated] = useStateAo({ start: null, end: null });
+  const [showCreatedCal, setShowCreatedCal] = useStateAo(false);
+  const createdRef = useRefAo(null);
   const [period, setPeriod] = useStateAo({ start: null, end: null });
   const [showPeriodCal, setShowPeriodCal] = useStateAo(false);
   const periodRef = useRefAo(null);
@@ -91,25 +93,19 @@ function LpAdminOrders({ adminPwd, onPrint }) {
   }, []);
 
   useEffectAo(() => {
-    if (!showPeriodCal) return;
+    if (!showPeriodCal && !showCreatedCal) return;
     const onDown = e => {
-      if (periodRef.current && !periodRef.current.contains(e.target)) setShowPeriodCal(false);
+      if (showPeriodCal  && periodRef.current  && !periodRef.current.contains(e.target))  setShowPeriodCal(false);
+      if (showCreatedCal && createdRef.current && !createdRef.current.contains(e.target)) setShowCreatedCal(false);
     };
-    const onKey = e => { if (e.key === 'Escape') setShowPeriodCal(false); };
+    const onKey = e => { if (e.key === 'Escape') { setShowPeriodCal(false); setShowCreatedCal(false); } };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [showPeriodCal]);
-
-  // Список контрагентов для фильтра — уникальные имена из всех заявок
-  const clientOptions = useMemoAo(() => {
-    const s = new Set();
-    orders.forEach(o => { if (o.clientName) s.add(o.clientName); });
-    return Array.from(s).sort((a, b) => a.localeCompare(b, 'ru'));
-  }, [orders]);
+  }, [showPeriodCal, showCreatedCal]);
 
   const inTab = (o, t) => t === 'all' ? true : t === 'cancelled' ? (o.status === 'cancelled' || o.status === 'archive') : o.status === t;
 
@@ -125,9 +121,15 @@ function LpAdminOrders({ adminPwd, onPrint }) {
     const q = search.trim().toLowerCase();
     const ps = period.start ? new Date(period.start.getFullYear(), period.start.getMonth(), period.start.getDate()).getTime() : null;
     const pe = period.end   ? new Date(period.end.getFullYear(),   period.end.getMonth(),   period.end.getDate(),   23, 59, 59, 999).getTime() : null;
+    const cs = created.start ? new Date(created.start.getFullYear(), created.start.getMonth(), created.start.getDate()).getTime() : null;
+    const ce = created.end   ? new Date(created.end.getFullYear(),   created.end.getMonth(),   created.end.getDate(),   23, 59, 59, 999).getTime() : null;
     return orders.filter(o => {
       if (!inTab(o, tab)) return false;
-      if (clientFilter && o.clientName !== clientFilter) return false;
+      if (cs !== null || ce !== null) {
+        const t = new Date(o.createdAt).getTime();
+        if (cs !== null && t < cs) return false;
+        if (ce !== null && t > ce) return false;
+      }
       if (ps !== null || pe !== null) {
         const t = parseISO(o.shipmentDate).getTime();
         if (ps !== null && t < ps) return false;
@@ -141,7 +143,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
       }
       return true;
     });
-  }, [orders, tab, search, clientFilter, period]);
+  }, [orders, tab, search, created, period]);
 
   const PAGE_SIZE = 8;
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -388,7 +390,7 @@ function LpAdminOrders({ adminPwd, onPrint }) {
               padding: '10px 14px', boxShadow: MO_SHADOW_XS,
             }}>
               <span style={{ color: MO_TEXT_TAB, display: 'flex' }}>{CpIco.search}</span>
-              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск"
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Номер заявки, контрагент"
                 style={{
                   flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
                   fontFamily: CP_F, fontSize: 16, lineHeight: '24px', color: MO_TEXT_PRIMARY,
@@ -396,20 +398,48 @@ function LpAdminOrders({ adminPwd, onPrint }) {
             </div>
           </div>
 
-          {/* Фильтр по контрагенту */}
-          <div style={{ flex: '1 1 280px', minWidth: 0 }}>
-            <select value={clientFilter} onChange={e => { setClientFilter(e.target.value); setPage(1); }}
+          {/* Фильтр по дате создания заявки */}
+          <div ref={createdRef} style={{ flex: '1 1 280px', minWidth: 0, position: 'relative' }}>
+            <button type="button" onClick={() => setShowCreatedCal(s => !s)}
               style={{
-                width: '100%', padding: '10px 36px 10px 14px',
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                background: '#fff', border: `1px solid ${MO_BORDER_INPUT}`, borderRadius: 8,
+                padding: '10px 14px', boxShadow: MO_SHADOW_XS, textAlign: 'left',
                 fontFamily: CP_F, fontSize: 16, lineHeight: '24px',
-                color: clientFilter ? MO_TEXT_PRIMARY : MO_TEXT_TAB,
-                background: `#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237E7979' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>") no-repeat right 14px center`,
-                border: `1px solid ${MO_BORDER_INPUT}`, borderRadius: 8, outline: 'none', cursor: 'pointer',
-                appearance: 'none', WebkitAppearance: 'none', boxShadow: MO_SHADOW_XS,
+                color: created.start ? MO_TEXT_PRIMARY : MO_TEXT_TAB,
               }}>
-              <option value="">Все контрагенты</option>
-              {clientOptions.map(name => <option key={name} value={name}>{name}</option>)}
-            </select>
+              <span style={{ color: created.start ? MO_BRAND_ACTIVE : MO_TEXT_TAB, display: 'flex' }}>{CpIco.calendar}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {created.start && created.end
+                  ? `${fmtShort(created.start)} — ${fmtShort(created.end)}`
+                  : created.start
+                    ? `${fmtShort(created.start)} — …`
+                    : 'Период создания'}
+              </span>
+              {created.start && (
+                <span
+                  role="button"
+                  aria-label="Очистить период создания"
+                  onClick={e => { e.stopPropagation(); setCreated({ start: null, end: null }); setPage(1); }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 18, height: 18, borderRadius: 9, color: MO_TEXT_TAB, flexShrink: 0,
+                  }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </span>
+              )}
+            </button>
+            {showCreatedCal && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30 }}>
+                <LpHistRangeCalendar
+                  start={created.start}
+                  end={created.end}
+                  onChange={p => { setCreated(p); setPage(1); }}
+                  onClear={() => { setCreated({ start: null, end: null }); setPage(1); }}
+                  onClose={() => setShowCreatedCal(false)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Фильтр по дате отгрузки */}
