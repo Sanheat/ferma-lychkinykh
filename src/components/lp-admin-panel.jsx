@@ -502,7 +502,16 @@ function LpAdminOrders({ adminPwd, onPrint }) {
           boxShadow: CP_SHADOW_SM, overflow: 'hidden', paddingBottom: 20,
         }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: 110 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 200 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 280 }} />
+                <col style={{ width: 120 }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th style={{ ...thBase, width: 110 }}>
@@ -519,20 +528,16 @@ function LpAdminOrders({ adminPwd, onPrint }) {
                     </span>
                   </th>
                   <th style={thBase}>Адрес/способ</th>
-                  <th style={thBase}>Позиции</th>
                   <th style={thBase}>Объём</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 && (
-                  <tr><td colSpan={8} style={{ ...tdBase, textAlign: 'center', color: MO_TEXT_TAB, height: 'auto', padding: '48px 24px' }}>
+                  <tr><td colSpan={7} style={{ ...tdBase, textAlign: 'center', color: MO_TEXT_TAB, height: 'auto', padding: '48px 24px' }}>
                     Заявок не найдено
                   </td></tr>
                 )}
                 {pageRows.map(o => {
-                  const products = o.items.map(i => i.product);
-                  const shown = products.slice(0, 3);
-                  const extra = products.length - shown.length;
                   const method = o.deliveryType === 'pickup' ? 'Самовывоз' : 'Доставка';
                   return (
                     <tr key={o.id} style={{ cursor: 'pointer' }}
@@ -556,26 +561,9 @@ function LpAdminOrders({ adminPwd, onPrint }) {
                       <td style={{ ...tdBase, color: MO_TEXT_HEAD, whiteSpace: 'nowrap' }}>
                         {o.shipmentDate ? fmtShort(parseISO(o.shipmentDate)) : '—'}
                       </td>
-                      <td style={{ ...tdBase, maxWidth: 240 }}>
+                      <td style={tdBase}>
                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.deliveryAddress}</div>
                         <div style={supText}>{method}</div>
-                      </td>
-                      <td style={tdBase}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 220 }}>
-                          {shown.map((p, i) => (
-                            <span key={i} style={{
-                              display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 16,
-                              background: MO_BG_HEAD, fontFamily: CP_F, fontWeight: 500, fontSize: 12, lineHeight: '18px',
-                              color: MO_TEXT_VALUE, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            }}>{p}</span>
-                          ))}
-                          {extra > 0 && (
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 16,
-                              background: MO_BG_HEAD, fontFamily: CP_F, fontWeight: 500, fontSize: 12, lineHeight: '18px', color: MO_TEXT_VALUE,
-                            }}>+{extra}</span>
-                          )}
-                        </div>
                       </td>
                       <td style={{ ...tdBase, color: MO_TEXT_VOLUME, whiteSpace: 'nowrap' }}>
                         {Math.round(orderVolumeKg(o))} кг
