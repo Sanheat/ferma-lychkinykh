@@ -930,7 +930,10 @@ function LpPrintBlanks({ orders, onClose }) {
   return ReactDOM.createPortal(
     <div className="lp-print-root" style={{ position:'fixed', inset:0, background:'#666', zIndex:500, overflowY:'auto' }}>
       <style>{`
-        @page { size: A4 landscape; margin: 6mm; }
+        /* Поля 5 мм => печатаемая область A4 landscape ≈ 287 × 200 мм.
+           Лист бланков делаем чуть меньше (285 × 197 мм), чтобы из-за
+           округлений он гарантированно не переливался на след. страницу. */
+        @page { size: A4 landscape; margin: 5mm; }
         @media print {
           html, body { background: white !important; }
           /* В печать уходят ТОЛЬКО бланки: всё остальное приложение скрываем */
@@ -943,13 +946,18 @@ function LpPrintBlanks({ orders, onClose }) {
             width: auto !important; height: auto !important;
           }
           .lp-print-toolbar { display: none !important; }
-          .lp-blank-page { box-shadow: none !important; margin: 0 !important; page-break-after: always; }
+          .lp-blank-page {
+            box-shadow: none !important; margin: 0 !important;
+            width: 285mm !important; height: 198mm !important;
+            page-break-after: always; page-break-inside: avoid;
+            overflow: hidden;
+          }
           .lp-blank-page:last-child { page-break-after: auto; }
         }
         .lp-blank-page {
-          background: white; width: 285mm; height: 200mm;
+          background: white; width: 285mm; height: 197mm;
           margin: 14px auto; box-shadow: 0 4px 24px rgba(0,0,0,.25);
-          padding: 4mm; box-sizing: border-box;
+          padding: 4mm; box-sizing: border-box; overflow: hidden;
           display: grid; grid-template-columns: 1fr 1fr; gap: 4mm;
         }
         .lp-blank {
