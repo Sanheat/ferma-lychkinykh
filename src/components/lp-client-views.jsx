@@ -85,7 +85,7 @@ function LpClientLogin({ onLogin, onAdmin }) {
           <h1 className="cp-login-title" style={{
             fontFamily:CP_FD, fontWeight:700, fontSize:30, lineHeight:'38px',
             color:CP_GRAY_900, letterSpacing:'-0.01em', margin:'0 0 8px',
-          }}>Вход личный кабинет</h1>
+          }}>Вход в личный кабинет</h1>
           <p style={{
             fontFamily:CP_F, fontSize:14, lineHeight:'20px',
             color:CP_TEXT_MUTED, margin:'0 0 32px',
