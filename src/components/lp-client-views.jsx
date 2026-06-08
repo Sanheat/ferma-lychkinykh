@@ -633,8 +633,8 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                 value={item.qty}
                 onChange={e=>onChange(idx, { ...item, qty: e.target.value })}
                 style={{
-                  width:96, boxSizing:'border-box', height:48,
-                  padding:'12px 14px',
+                  width:150, boxSizing:'border-box',
+                  padding:'12px 16px',
                   border:`1px solid ${CP_BORDER_CONTROL}`, borderRadius:8,
                   background:'#fff', outline:'none', textAlign:'center',
                   fontFamily:CP_F, fontSize:14, lineHeight:'20px',

@@ -272,16 +272,19 @@ function LpAdminLineItem({ item, idx, total, onChange, onRemove, isMobile }) {
     </div>
   );
 
+  // Поле количества во всех вариантах тары — одного фиксированного размера (QTY_W×QTY_H),
+  // чтобы кг-поле не отличалось от счётчика и не съезжало на разных брейкпоинтах.
+  const QTY_W = 124, QTY_H = 42;
   const qtyField = pkg.type === 'kg' ? (
     <input type="number" min="0.1" step="0.1" placeholder="кг"
       value={item.qty} onChange={e => onChange(idx, { ...item, qty: e.target.value })}
-      style={{ width: 120, flexShrink: 0, border: `1px solid ${BDR2}`, borderRadius: 8, padding: '10px 14px', boxShadow: SHX, outline: 'none', fontFamily: F, fontSize: 14, fontWeight: 600, color: TSC, background: '#fff' }}
+      style={{ width: QTY_W, height: QTY_H, boxSizing: 'border-box', flexShrink: 0, border: `1px solid ${BDR2}`, borderRadius: 8, padding: '0 14px', textAlign: 'center', boxShadow: SHX, outline: 'none', fontFamily: F, fontSize: 14, fontWeight: 600, color: TSC, background: '#fff' }}
     />
   ) : (
-    <div style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, border: `1px solid ${BDR2}`, borderRadius: 8, overflow: 'hidden' }}>
-      <button type="button" onClick={decQty} style={{ background: '#fff', border: 'none', borderRight: `1px solid ${BDR2}`, padding: '10px 14px', cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>−</button>
-      <div style={{ minWidth: 46, padding: '10px 12px', textAlign: 'center', borderRight: `1px solid ${BDR2}`, background: '#fff', fontFamily: F, fontWeight: 600, fontSize: 14, color: TSC }}>{count}</div>
-      <button type="button" onClick={incQty} style={{ background: '#fff', border: 'none', padding: '10px 14px', cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>+</button>
+    <div style={{ display: 'inline-flex', alignItems: 'stretch', width: QTY_W, height: QTY_H, boxSizing: 'border-box', flexShrink: 0, border: `1px solid ${BDR2}`, borderRadius: 8, overflow: 'hidden' }}>
+      <button type="button" onClick={decQty} style={{ width: 40, flexShrink: 0, background: '#fff', border: 'none', borderRight: `1px solid ${BDR2}`, cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>−</button>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${BDR2}`, background: '#fff', fontFamily: F, fontWeight: 600, fontSize: 14, color: TSC }}>{count}</div>
+      <button type="button" onClick={incQty} style={{ width: 40, flexShrink: 0, background: '#fff', border: 'none', cursor: 'pointer', fontFamily: F, fontWeight: 600, fontSize: 16, color: TSC }}>+</button>
     </div>
   );
 
