@@ -623,24 +623,34 @@ function LpClientLineItem({ item, idx, total, onChange, onRemove }) {
                 <option value="" disabled hidden>Тара</option>
                 {Object.entries(PKG).map(([k,v]) => {
                   const note = v.note ? v.note.replace(/^≈\s*/, '') : '';
-                  return <option key={k} value={k}>{v.label}{note ? `  —  ${note}` : ''}</option>;
+                  return <option key={k} value={k}>{v.label}{note ? ` (${note})` : ''}</option>;
                 })}
               </select>
             </div>
             {isKg ? (
-              <input
-                type="number" min="0.1" step="0.1" placeholder="кг"
-                value={item.qty}
-                onChange={e=>onChange(idx, { ...item, qty: e.target.value })}
-                style={{
-                  width:150, boxSizing:'border-box',
-                  padding:'12px 16px',
-                  border:`1px solid ${CP_BORDER_CONTROL}`, borderRadius:8,
-                  background:'#fff', outline:'none', textAlign:'center',
+              <div style={{
+                width:150, boxSizing:'border-box', flexShrink:0,
+                display:'flex', alignItems:'center', overflow:'hidden',
+                border:`1px solid ${CP_BORDER_CONTROL}`, borderRadius:8, background:'#fff',
+              }}>
+                <input
+                  type="number" min="0.1" step="0.1" placeholder="0"
+                  value={item.qty}
+                  onChange={e=>onChange(idx, { ...item, qty: e.target.value })}
+                  style={{
+                    flex:1, minWidth:0, boxSizing:'border-box',
+                    padding:'12px 6px 12px 16px',
+                    border:'none', background:'transparent', outline:'none', textAlign:'center',
+                    fontFamily:CP_F, fontSize:14, lineHeight:'20px',
+                    fontWeight:600, color:CP_TEXT_SECONDARY,
+                  }}
+                />
+                <span style={{
+                  padding:'12px 16px 12px 0', flexShrink:0,
                   fontFamily:CP_F, fontSize:14, lineHeight:'20px',
-                  fontWeight:600, color:CP_TEXT_SECONDARY, flexShrink:0,
-                }}
-              />
+                  fontWeight:600, color:CP_TEXT_MUTED,
+                }}>кг</span>
+              </div>
             ) : (
             <div style={{
               display:'flex', alignItems:'flex-start',
